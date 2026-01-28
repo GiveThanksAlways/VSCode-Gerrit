@@ -13,18 +13,18 @@ import {
 	InspectBatchMessage,
 	RemoveFromBatchMessage,
 	SubmitBatchVoteMessage,
-} from './messaging';
-import { BatchReviewChange, TypedWebviewPanel } from './types';
-import { BatchReviewState } from './state';
-import { GerritChange } from '../../../lib/gerrit/gerritAPI/gerritChange';
-import { GerritAPIWith } from '../../../lib/gerrit/gerritAPI/api';
-import { Repository } from '../../../types/vscode-extension-git';
-import { getAPI } from '../../../lib/gerrit/gerritAPI';
-import { getHTML } from './html';
+} from './batchReview/messaging';
+import { BatchReviewChange, TypedWebviewPanel } from './batchReview/types';
+import { BatchReviewState } from './batchReview/state';
+import { GerritChange } from '../../lib/gerrit/gerritAPI/gerritChange';
+import { GerritAPIWith } from '../../lib/gerrit/gerritAPI/api';
+import { Repository } from '../../types/vscode-extension-git';
+import { getAPI } from '../../lib/gerrit/gerritAPI';
+import { getHTML } from './batchReview/html';
 import {
 	DefaultChangeFilter,
 	GerritChangeFilter,
-} from '../../../lib/gerrit/gerritAPI/filters';
+} from '../../lib/gerrit/gerritAPI/filters';
 
 class BatchReviewProvider implements Disposable {
 	private _panel: TypedWebviewPanel<BatchReviewWebviewMessage> | null = null;
@@ -79,7 +79,10 @@ class BatchReviewProvider implements Disposable {
 			project: change.project,
 			branch: change.branch,
 			owner: {
-				name: change.owner.name ?? 'Unknown',
+				name:
+					'name' in change.owner
+						? change.owner.name
+						: `Account ${change.owner._account_id}`,
 				accountID: change.owner._account_id,
 			},
 			updated: change.updated,
@@ -199,6 +202,9 @@ class BatchReviewProvider implements Disposable {
 				{
 					labels: { 'Code-Review': msg.body.score },
 					message: msg.body.message || undefined,
+					publishDrafts: false,
+					reviewers: [],
+					cc: [],
 				}
 			);
 

@@ -1435,8 +1435,8 @@
 	"scripts": {
 		"prepack": "bun generate-package && bun prettier --check src/ && bun lint && bun compile && bun run build",
 		"vscode:prepublish": "bun run prepack",
-		"compile": "tsc --noEmit -p ./src && tsc --noEmit -p src/views/activityBar/review/html/src/tsconfig.json && tsc --noEmit -p src/views/editor/batchReview/html/src/tsconfig.json",
-		"compile:debug": "tsc -p ./src && tsc -p src/views/activityBar/review/html/src/tsconfig.json && tsc -p src/views/editor/batchReview/html/src/tsconfig.json",
+		"compile": "tsc --noEmit -p ./src && tsc --noEmit -p src/views/activityBar/review/html/src/tsconfig.json",
+		"compile:debug": "tsc -p ./src && tsc -p src/views/activityBar/review/html/src/tsconfig.json",
 		"watch": "npm-run-all -p watch:compile watch:build",
 		"watch:compile": "tsc -p ./src -w",
 		"watch:build": "bun build:debug:review:js --watch",
