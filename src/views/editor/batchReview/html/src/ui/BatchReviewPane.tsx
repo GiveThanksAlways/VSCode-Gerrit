@@ -69,6 +69,8 @@ interface ExpandableChangeItemProps {
 	selected: boolean;
 	onSelectionChange: (changeID: string, selected: boolean) => void;
 	showScore?: boolean;
+	draggable?: boolean;
+	onDragStart?: (e: React.DragEvent, changeID: string) => void;
 }
 
 const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
@@ -76,6 +78,8 @@ const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 	selected,
 	onSelectionChange,
 	showScore = false,
+	draggable = false,
+	onDragStart,
 }) => {
 	const [expanded, setExpanded] = useState(false);
 	const [loadingFiles, setLoadingFiles] = useState(false);
@@ -101,9 +105,24 @@ const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 		}
 	}, [change.filesLoaded]);
 
+	const handleDragStart = (e: React.DragEvent) => {
+		if (onDragStart) {
+			onDragStart(e, change.changeID);
+		}
+	};
+
 	return (
-		<div className={`change-item ${selected ? 'selected' : ''}`}>
+		<div
+			className={`change-item ${selected ? 'selected' : ''} ${draggable ? 'draggable' : ''}`}
+			draggable={draggable}
+			onDragStart={handleDragStart}
+		>
 			<div className="change-row">
+				{draggable && (
+					<span className="drag-handle" title="Drag to move">
+						<span className="codicon codicon-gripper"></span>
+					</span>
+				)}
 				<button
 					className="expand-button"
 					onClick={handleExpandClick}
@@ -178,6 +197,9 @@ interface ChangeListProps {
 	onSelectAll: (selected: boolean) => void;
 	title: string;
 	showScores?: boolean;
+	listType: 'yourTurn' | 'batch';
+	onDragStart: (e: React.DragEvent, changeID: string, listType: 'yourTurn' | 'batch') => void;
+	onDrop: (e: React.DragEvent, targetListType: 'yourTurn' | 'batch') => void;
 }
 
 const ChangeList: VFC<ChangeListProps> = ({
@@ -187,12 +209,41 @@ const ChangeList: VFC<ChangeListProps> = ({
 	onSelectAll,
 	title,
 	showScores = false,
+	listType,
+	onDragStart,
+	onDrop,
 }) => {
 	const allSelected =
 		changes.length > 0 && changes.every((c) => selectedChanges.has(c.changeID));
+	const [isDragOver, setIsDragOver] = useState(false);
+
+	const handleDragOver = (e: React.DragEvent) => {
+		e.preventDefault();
+		e.dataTransfer.dropEffect = 'move';
+		setIsDragOver(true);
+	};
+
+	const handleDragLeave = () => {
+		setIsDragOver(false);
+	};
+
+	const handleDrop = (e: React.DragEvent) => {
+		e.preventDefault();
+		setIsDragOver(false);
+		onDrop(e, listType);
+	};
+
+	const handleItemDragStart = (e: React.DragEvent, changeID: string) => {
+		onDragStart(e, changeID, listType);
+	};
 
 	return (
-		<div className="change-list">
+		<div
+			className={`change-list ${isDragOver ? 'drag-over' : ''}`}
+			onDragOver={handleDragOver}
+			onDragLeave={handleDragLeave}
+			onDrop={handleDrop}
+		>
 			<div className="list-header">
 				<h2>{title}</h2>
 				{changes.length > 0 && (
@@ -208,7 +259,9 @@ const ChangeList: VFC<ChangeListProps> = ({
 			</div>
 			<div className="changes-container">
 				{changes.length === 0 ? (
-					<div className="empty-message">No changes</div>
+					<div className="empty-message drop-hint">
+						{isDragOver ? 'Drop here to add' : 'No changes'}
+					</div>
 				) : (
 					changes.map((change) => (
 						<ExpandableChangeItem
@@ -217,6 +270,8 @@ const ChangeList: VFC<ChangeListProps> = ({
 							selected={selectedChanges.has(change.changeID)}
 							onSelectionChange={onSelectionChange}
 							showScore={showScores}
+							draggable={true}
+							onDragStart={handleItemDragStart}
 						/>
 					))
 				)}
@@ -354,6 +409,73 @@ export const BatchReviewPane: VFC = () => {
 		vscode.postMessage({ type: 'stopAutomation' });
 	};
 
+	// Drag and Drop handlers
+	const handleDragStart = (
+		e: React.DragEvent,
+		changeID: string,
+		sourceList: 'yourTurn' | 'batch'
+	) => {
+		// Get list of IDs to drag - if the dragged item is selected, drag all selected items
+		// Otherwise, just drag the single item
+		const selectedSet =
+			sourceList === 'yourTurn' ? selectedYourTurn : selectedBatch;
+		let changeIDs: string[];
+
+		if (selectedSet.has(changeID)) {
+			// Dragging a selected item - drag all selected items
+			changeIDs = Array.from(selectedSet);
+		} else {
+			// Dragging an unselected item - just drag that one
+			changeIDs = [changeID];
+		}
+
+		e.dataTransfer.setData(
+			'application/json',
+			JSON.stringify({
+				changeIDs,
+				sourceList,
+			})
+		);
+		e.dataTransfer.effectAllowed = 'move';
+	};
+
+	const handleDrop = (
+		e: React.DragEvent,
+		targetList: 'yourTurn' | 'batch'
+	) => {
+		e.preventDefault();
+		const data = e.dataTransfer.getData('application/json');
+		if (!data) return;
+
+		try {
+			const { changeIDs, sourceList } = JSON.parse(data) as {
+				changeIDs: string[];
+				sourceList: 'yourTurn' | 'batch';
+			};
+
+			// Don't do anything if dropping on the same list
+			if (sourceList === targetList) return;
+
+			if (targetList === 'batch') {
+				// Moving from yourTurn to batch
+				vscode.postMessage({
+					type: 'addToBatch',
+					body: { changeIDs },
+				});
+				setSelectedYourTurn(new Set());
+			} else {
+				// Moving from batch to yourTurn
+				vscode.postMessage({
+					type: 'removeFromBatch',
+					body: { changeIDs },
+				});
+				setSelectedBatch(new Set());
+			}
+		} catch {
+			// Invalid data, ignore
+		}
+	};
+
 	if (state.loading) {
 		return (
 			<div className="loading-container">
@@ -416,6 +538,9 @@ export const BatchReviewPane: VFC = () => {
 						onSelectionChange={handleYourTurnSelection}
 						onSelectAll={handleYourTurnSelectAll}
 						title="Your Turn"
+						listType="yourTurn"
+						onDragStart={handleDragStart}
+						onDrop={handleDrop}
 					/>
 					<div className="action-buttons">
 						<button
@@ -437,6 +562,9 @@ export const BatchReviewPane: VFC = () => {
 						onSelectAll={handleBatchSelectAll}
 						title="Batch"
 						showScores={true}
+						listType="batch"
+						onDragStart={handleDragStart}
+						onDrop={handleDrop}
 					/>
 					<div className="batch-actions">
 						<div className="action-buttons">
