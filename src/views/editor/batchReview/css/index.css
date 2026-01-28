@@ -579,3 +579,217 @@ button:disabled {
 .change-item:has(.dragging) {
 	opacity: 0.5;
 }
+
+/* Review Panel Styles */
+.review-panel {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding: 16px;
+	background-color: var(--vscode-editor-background);
+	border-top: 1px solid var(--vscode-panel-border);
+}
+
+.people-picker {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.picker-label {
+	font-size: 13px;
+	font-weight: 500;
+	color: var(--vscode-foreground);
+}
+
+.picker-input-container {
+	position: relative;
+}
+
+.selected-people {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	margin-bottom: 4px;
+}
+
+.person-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 2px 8px;
+	background-color: var(--vscode-badge-background);
+	color: var(--vscode-badge-foreground);
+	border-radius: 12px;
+	font-size: 12px;
+}
+
+.remove-person {
+	background: transparent;
+	border: none;
+	color: var(--vscode-badge-foreground);
+	cursor: pointer;
+	padding: 0 2px;
+	font-size: 14px;
+	line-height: 1;
+}
+
+.remove-person:hover {
+	opacity: 0.7;
+}
+
+.people-input {
+	width: 100%;
+	padding: 6px 8px;
+	background-color: var(--vscode-input-background);
+	color: var(--vscode-input-foreground);
+	border: 1px solid var(--vscode-input-border, transparent);
+	border-radius: 3px;
+	font-size: 13px;
+}
+
+.people-input:focus {
+	outline: none;
+	border-color: var(--vscode-focusBorder);
+}
+
+.suggestions-dropdown {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	right: 0;
+	background-color: var(--vscode-dropdown-background);
+	border: 1px solid var(--vscode-dropdown-border);
+	border-radius: 3px;
+	max-height: 200px;
+	overflow-y: auto;
+	z-index: 100;
+}
+
+.suggestion-item {
+	padding: 8px 12px;
+	cursor: pointer;
+	font-size: 13px;
+}
+
+.suggestion-item:hover {
+	background-color: var(--vscode-list-hoverBackground);
+}
+
+.comment-section {
+	margin-top: 4px;
+}
+
+.resolved-section {
+	display: flex;
+	align-items: center;
+}
+
+.score-pickers {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.score-picker {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.score-label {
+	min-width: 100px;
+	font-size: 13px;
+	color: var(--vscode-foreground);
+}
+
+.score-buttons {
+	display: flex;
+	gap: 4px;
+}
+
+.score-button {
+	min-width: 32px;
+	padding: 4px 8px;
+	background-color: var(--vscode-button-secondaryBackground);
+	color: var(--vscode-button-secondaryForeground);
+	border: none;
+	border-radius: 12px;
+	cursor: pointer;
+	font-size: 12px;
+	font-weight: 500;
+}
+
+.score-button:hover {
+	opacity: 0.9;
+}
+
+.score-button.score-approved {
+	background-color: #7fb66b;
+	color: #fff;
+}
+
+.score-button.score-recommended {
+	background-color: #3f6732;
+	color: #fff;
+}
+
+.score-button.score-neutral {
+	background-color: #597280;
+	color: #fff;
+}
+
+.score-button.score-disliked {
+	background-color: #bf6874;
+	color: #fff;
+}
+
+.score-button.score-rejected {
+	background-color: #ac2d3e;
+	color: #fff;
+}
+
+.submit-buttons {
+	display: flex;
+	gap: 8px;
+	margin-top: 8px;
+}
+
+.button-submit,
+.button-send {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	padding: 8px 16px;
+	border: none;
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 13px;
+	font-weight: 500;
+}
+
+.button-submit {
+	background-color: var(--vscode-button-background);
+	color: var(--vscode-button-foreground);
+}
+
+.button-submit:hover:not(:disabled) {
+	background-color: var(--vscode-button-hoverBackground);
+}
+
+.button-send {
+	background-color: var(--vscode-button-secondaryBackground);
+	color: var(--vscode-button-secondaryForeground);
+}
+
+.button-send:hover:not(:disabled) {
+	background-color: var(--vscode-button-secondaryHoverBackground);
+}
+
+.button-submit:disabled,
+.button-send:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}

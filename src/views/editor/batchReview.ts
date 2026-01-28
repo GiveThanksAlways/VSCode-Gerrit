@@ -10,6 +10,7 @@ import {
 	AddToBatchMessage,
 	BatchReviewWebviewMessage,
 	GetFilesForChangeMessage,
+	GetPeopleMessage,
 	OpenFileDiffMessage,
 	RemoveFromBatchMessage,
 	SubmitBatchVoteMessage,
@@ -19,7 +20,7 @@ import {
 	BatchReviewFileInfo,
 	TypedWebviewPanel,
 } from './batchReview/types';
-import { BatchReviewState } from './batchReview/state';
+import { BatchReviewState, BatchReviewPerson } from './batchReview/state';
 import { GerritChange } from '../../lib/gerrit/gerritAPI/gerritChange';
 import { GerritAPIWith } from '../../lib/gerrit/gerritAPI/api';
 import { Repository } from '../../types/vscode-extension-git';
@@ -36,6 +37,8 @@ import {
 	BatchReviewApiServer,
 	ScoreMap,
 } from '../../lib/batchReviewApi/server';
+import { GerritUser } from '../../lib/gerrit/gerritAPI/gerritUser';
+import { GerritGroup } from '../../lib/gerrit/gerritAPI/gerritGroup';
 
 class BatchReviewProvider implements Disposable {
 	private _panel: TypedWebviewPanel<BatchReviewWebviewMessage> | null = null;
@@ -152,6 +155,11 @@ class BatchReviewProvider implements Disposable {
 			return scoreB - scoreA;
 		});
 
+		// Fetch labels if this is the first item added to batch
+		if (changesToAdd.length > 0 && !this._state.labels) {
+			await this._fetchLabels();
+		}
+
 		await this._updateView();
 	}
 
@@ -233,11 +241,12 @@ class BatchReviewProvider implements Disposable {
 				change.changeID,
 				currentRevision.id,
 				{
-					labels: { 'Code-Review': msg.body.score },
+					labels: msg.body.labels,
 					message: msg.body.message || undefined,
+					resolved: msg.body.resolved,
 					publishDrafts: false,
-					reviewers: [],
-					cc: [],
+					reviewers: msg.body.reviewers ?? [],
+					cc: msg.body.cc ?? [],
 				}
 			);
 
@@ -265,6 +274,131 @@ class BatchReviewProvider implements Disposable {
 		// API for programmatic inspection (AI agents can use this)
 		// This does NOT allow submission, only inspection
 		return;
+	}
+
+	private _userOrGroupToPeople(
+		value: (GerritUser | GerritGroup)[]
+	): BatchReviewPerson[] {
+		return value
+			.map((person) => ({
+				id: person instanceof GerritUser ? person.accountID : person.id,
+				name:
+					person instanceof GerritUser
+						? person.getName(true)
+						: person.name,
+				shortName: person.shortName(),
+			}))
+			.filter((p) => !!p.id) as BatchReviewPerson[];
+	}
+
+	private async _handleGetPeople(msg: GetPeopleMessage): Promise<void> {
+		const api = await getAPI();
+		if (!api) {
+			return;
+		}
+
+		// Use the first batch change to get suggestions, or fall back to empty
+		const firstChange = this._state.batchChanges[0];
+		if (!firstChange) {
+			return;
+		}
+
+		const fn = msg.body.isCC
+			? api.suggestCC.bind(api)
+			: api.suggestReviewers.bind(api);
+		const people = await fn(firstChange.changeID, msg.body.query);
+
+		if (msg.body.isCC) {
+			this._state.suggestedCC = this._userOrGroupToPeople(people);
+		} else {
+			this._state.suggestedReviewers = this._userOrGroupToPeople(people);
+		}
+
+		await this._updateView();
+	}
+
+	private async _handleSubmitBatch(): Promise<void> {
+		if (!this._panel) {
+			return;
+		}
+
+		const api = await getAPI();
+		if (!api) {
+			await this._panel.webview.postMessage({
+				type: 'batchVoteFailed',
+			});
+			return;
+		}
+
+		let successCount = 0;
+		let failureCount = 0;
+
+		for (const change of this._state.batchChanges) {
+			const success = await api.submit(change.changeID);
+			if (success) {
+				successCount++;
+			} else {
+				failureCount++;
+			}
+		}
+
+		// Clear batch after submission
+		this._state.batchChanges = [];
+		await this._updateView();
+
+		await this._panel.webview.postMessage({
+			type: 'batchVoteSuccess',
+			body: {
+				successCount,
+				failureCount,
+			},
+		});
+	}
+
+	private async _fetchLabels(): Promise<void> {
+		const api = await getAPI();
+		if (!api) {
+			return;
+		}
+
+		// Use the first batch change to get label info
+		const firstChange = this._state.batchChanges[0];
+		if (!firstChange) {
+			// Provide default Code-Review label
+			this._state.labels = [
+				{
+					name: 'Code-Review',
+					possibleValues: [
+						{ score: '-2', description: 'This shall not be merged' },
+						{
+							score: '-1',
+							description: 'I would prefer this is not merged as is',
+						},
+						{ score: ' 0', description: 'No score' },
+						{ score: '+1', description: 'Looks good to me, but someone else must approve' },
+						{ score: '+2', description: 'Looks good to me, approved' },
+					],
+				},
+			];
+			return;
+		}
+
+		const detail = await api.getChangeDetail(firstChange.changeID);
+		if (!detail) {
+			return;
+		}
+
+		this._state.labels = Object.entries(detail.labels)
+			.filter(([name]) => detail.permittedLabels[name])
+			.map(([name, value]) => ({
+				name,
+				possibleValues: Object.entries(value.values)
+					.filter(([k]) => detail.permittedLabels[name].includes(k))
+					.map(([k, v]) => ({
+						score: k,
+						description: v,
+					})),
+			}));
 	}
 
 	private async _handleGetFilesForChange(
@@ -516,6 +650,12 @@ class BatchReviewProvider implements Disposable {
 				break;
 			case 'openFileDiff':
 				await this._handleOpenFileDiff(msg);
+				break;
+			case 'getPeople':
+				await this._handleGetPeople(msg);
+				break;
+			case 'submitBatch':
+				await this._handleSubmitBatch();
 				break;
 		}
 	}

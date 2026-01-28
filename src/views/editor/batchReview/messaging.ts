@@ -25,8 +25,14 @@ export interface ClearBatchMessage {
 export interface SubmitBatchVoteMessage {
 	type: 'submitBatchVote';
 	body: {
-		score: number; // +1 or +2
+		/** Label votes, e.g. { "Code-Review": 1 } */
+		labels: Record<string, number>;
 		message?: string;
+		resolved?: boolean;
+		/** Reviewer IDs to add */
+		reviewers?: (string | number)[];
+		/** CC IDs to add */
+		cc?: (string | number)[];
 	};
 }
 
@@ -57,6 +63,18 @@ export interface OpenFileDiffMessage {
 	};
 }
 
+export interface GetPeopleMessage {
+	type: 'getPeople';
+	body: {
+		query?: string;
+		isCC: boolean;
+	};
+}
+
+export interface SubmitBatchMessage {
+	type: 'submitBatch';
+}
+
 /**
  * Batch Review `postMessage` message types and their bodies.
  */
@@ -83,6 +101,8 @@ export type BatchReviewWebviewMessage =
 	| StopAutomationMessage
 	| GetFilesForChangeMessage
 	| OpenFileDiffMessage
+	| GetPeopleMessage
+	| SubmitBatchMessage
 	| {
 			type: 'batchVoteSuccess';
 			body: {

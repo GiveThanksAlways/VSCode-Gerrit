@@ -1,5 +1,5 @@
-import React, { VFC, useState, useEffect } from 'react';
-import { BatchReviewState } from '../../../state';
+import React, { VFC, useState, useEffect, useCallback, useMemo } from 'react';
+import { BatchReviewState, BatchReviewPerson, BatchReviewLabel } from '../../../state';
 import { BatchReviewChange, BatchReviewFileInfo } from '../../../types';
 import { vscode } from '../lib/api';
 
@@ -280,6 +280,140 @@ const ChangeList: VFC<ChangeListProps> = ({
 	);
 };
 
+// ===== Review Panel Components =====
+
+interface ScorePickerProps {
+	label: BatchReviewLabel;
+	value: number;
+	onChange: (name: string, value: number) => void;
+}
+
+const ScorePicker: VFC<ScorePickerProps> = ({ label, value, onChange }) => {
+	const getScoreStyle = (score: string): string => {
+		const scoreNum = parseInt(score.trim(), 10);
+		const allValues = label.possibleValues.map((v) =>
+			parseInt(v.score.trim(), 10)
+		);
+
+		if (scoreNum === 0) return 'score-neutral';
+		if (scoreNum === Math.max(...allValues)) return 'score-approved';
+		if (scoreNum === Math.min(...allValues)) return 'score-rejected';
+		if (scoreNum > 0) return 'score-recommended';
+		return 'score-disliked';
+	};
+
+	return (
+		<div className="score-picker">
+			<span className="score-label">{label.name}:</span>
+			<div className="score-buttons">
+				{label.possibleValues.map((pv, i) => {
+					const scoreNum = parseInt(pv.score.trim(), 10);
+					const isSelected = value === scoreNum;
+					return (
+						<button
+							key={i}
+							className={`score-button ${isSelected ? getScoreStyle(pv.score) : ''}`}
+							onClick={() => onChange(label.name, scoreNum)}
+							title={pv.description}
+						>
+							{pv.score.trim()}
+						</button>
+					);
+				})}
+			</div>
+		</div>
+	);
+};
+
+interface PeoplePickerProps {
+	label: string;
+	people: BatchReviewPerson[];
+	suggestions: BatchReviewPerson[];
+	onChange: (people: BatchReviewPerson[]) => void;
+	onSearch: (query: string) => void;
+	placeholder?: string;
+}
+
+const PeoplePicker: VFC<PeoplePickerProps> = ({
+	label,
+	people,
+	suggestions,
+	onChange,
+	onSearch,
+	placeholder,
+}) => {
+	const [isOpen, setIsOpen] = useState(false);
+	const [query, setQuery] = useState('');
+
+	const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const value = e.target.value;
+		setQuery(value);
+		setIsOpen(true);
+		onSearch(value);
+	};
+
+	const handleSelect = (person: BatchReviewPerson) => {
+		if (!person.locked && !people.some((p) => p.id === person.id)) {
+			onChange([...people, person]);
+		}
+		setQuery('');
+		setIsOpen(false);
+	};
+
+	const handleRemove = (personId: string | number) => {
+		onChange(people.filter((p) => p.id !== personId && !p.locked));
+	};
+
+	const filteredSuggestions = suggestions.filter(
+		(s) => !people.some((p) => p.id === s.id)
+	);
+
+	return (
+		<div className="people-picker">
+			<span className="picker-label">{label}:</span>
+			<div className="picker-input-container">
+				<div className="selected-people">
+					{people.map((person) => (
+						<span key={person.id} className="person-chip" title={person.name}>
+							{person.shortName}
+							{!person.locked && (
+								<button
+									className="remove-person"
+									onClick={() => handleRemove(person.id)}
+								>
+									×
+								</button>
+							)}
+						</span>
+					))}
+				</div>
+				<input
+					type="text"
+					value={query}
+					onChange={handleInputChange}
+					onFocus={() => setIsOpen(true)}
+					onBlur={() => setTimeout(() => setIsOpen(false), 200)}
+					placeholder={placeholder}
+					className="people-input"
+				/>
+				{isOpen && filteredSuggestions.length > 0 && (
+					<div className="suggestions-dropdown">
+						{filteredSuggestions.map((person) => (
+							<div
+								key={person.id}
+								className="suggestion-item"
+								onClick={() => handleSelect(person)}
+							>
+								{person.name}
+							</div>
+						))}
+					</div>
+				)}
+			</div>
+		</div>
+	);
+};
+
 export const BatchReviewPane: VFC = () => {
 	const [state, setState] = useState<BatchReviewState>({
 		yourTurnChanges: [],
@@ -291,6 +425,10 @@ export const BatchReviewPane: VFC = () => {
 	);
 	const [selectedBatch, setSelectedBatch] = useState<Set<string>>(new Set());
 	const [voteMessage, setVoteMessage] = useState<string>('');
+	const [labelValues, setLabelValues] = useState<Record<string, number>>({});
+	const [resolved, setResolved] = useState<boolean>(true);
+	const [reviewers, setReviewers] = useState<BatchReviewPerson[]>([]);
+	const [ccList, setCcList] = useState<BatchReviewPerson[]>([]);
 	const [automationStatus, setAutomationStatus] = useState<{
 		running: boolean;
 		port: number | null;
@@ -382,7 +520,25 @@ export const BatchReviewPane: VFC = () => {
 		setSelectedBatch(new Set());
 	};
 
-	const handleSubmitVote = (score: number) => {
+	const handleLabelChange = (name: string, value: number) => {
+		setLabelValues((prev) => ({ ...prev, [name]: value }));
+	};
+
+	const handleReviewerSearch = (query: string) => {
+		vscode.postMessage({
+			type: 'getPeople',
+			body: { query, isCC: false },
+		});
+	};
+
+	const handleCCSearch = (query: string) => {
+		vscode.postMessage({
+			type: 'getPeople',
+			body: { query, isCC: true },
+		});
+	};
+
+	const handleSendReview = () => {
 		if (state.batchChanges.length === 0) {
 			alert('No changes in batch to review');
 			return;
@@ -391,10 +547,22 @@ export const BatchReviewPane: VFC = () => {
 		vscode.postMessage({
 			type: 'submitBatchVote',
 			body: {
-				score,
+				labels: labelValues,
 				message: voteMessage.trim() || undefined,
+				resolved,
+				reviewers: reviewers.map((r) => r.id),
+				cc: ccList.map((c) => c.id),
 			},
 		});
+	};
+
+	const handleSubmitPatch = () => {
+		if (state.batchChanges.length === 0) {
+			alert('No changes in batch to submit');
+			return;
+		}
+
+		vscode.postMessage({ type: 'submitBatch' });
 	};
 
 	const handleRefresh = () => {
@@ -585,32 +753,79 @@ export const BatchReviewPane: VFC = () => {
 								Clear All
 							</button>
 						</div>
-						<div className="vote-section">
-							<textarea
-								className="vote-message"
-								placeholder="Optional message used for all batch reviews..."
-								value={voteMessage}
-								onChange={(e) => setVoteMessage(e.target.value)}
-								rows={3}
+						<div className="review-panel">
+							{/* Reviewers and CC */}
+							<PeoplePicker
+								label="Reviewers"
+								people={reviewers}
+								suggestions={state.suggestedReviewers ?? []}
+								onChange={setReviewers}
+								onSearch={handleReviewerSearch}
+								placeholder="Add reviewers..."
 							/>
-							<div className="vote-buttons">
+							<PeoplePicker
+								label="CC"
+								people={ccList}
+								suggestions={state.suggestedCC ?? []}
+								onChange={setCcList}
+								onSearch={handleCCSearch}
+								placeholder="Add CC..."
+							/>
+
+							{/* Comment */}
+							<div className="comment-section">
+								<textarea
+									className="vote-message"
+									placeholder="Say something nice..."
+									value={voteMessage}
+									onChange={(e) => setVoteMessage(e.target.value)}
+									rows={3}
+								/>
+							</div>
+
+							{/* Resolved checkbox */}
+							<div className="resolved-section">
+								<label className="checkbox-label">
+									<input
+										type="checkbox"
+										checked={resolved}
+										onChange={(e) => setResolved(e.target.checked)}
+									/>
+									<span>Resolved</span>
+								</label>
+							</div>
+
+							{/* Score pickers */}
+							<div className="score-pickers">
+								{(state.labels ?? []).map((label, i) => (
+									<ScorePicker
+										key={i}
+										label={label}
+										value={labelValues[label.name] ?? 0}
+										onChange={handleLabelChange}
+									/>
+								))}
+							</div>
+
+							{/* Submit buttons */}
+							<div className="submit-buttons">
 								<button
-									onClick={() => handleSubmitVote(1)}
+									onClick={handleSubmitPatch}
 									disabled={state.batchChanges.length === 0}
-									className="button-vote vote-plus-one"
-									title="Submit Code-Review +1 to all changes in batch"
+									className="button-submit"
+									title="Submit all changes in batch"
 								>
-									<span className="codicon codicon-thumbsup"></span>
-									+1 ({state.batchChanges.length})
+									<span className="codicon codicon-check-all"></span>
+									Submit patch ({state.batchChanges.length})
 								</button>
 								<button
-									onClick={() => handleSubmitVote(2)}
+									onClick={handleSendReview}
 									disabled={state.batchChanges.length === 0}
-									className="button-vote vote-plus-two"
-									title="Submit Code-Review +2 to all changes in batch"
+									className="button-send"
+									title="Send review for all changes in batch"
 								>
-									<span className="codicon codicon-verified"></span>
-									+2 ({state.batchChanges.length})
+									<span className="codicon codicon-comment"></span>
+									Send ({state.batchChanges.length})
 								</button>
 							</div>
 						</div>
