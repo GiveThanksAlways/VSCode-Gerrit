@@ -12,12 +12,13 @@ A modern, main-pane **Batch Review** feature has been added to VSCode-Gerrit, al
    - Opens batch review panel in main editor area (not sidebar)
    - Queries "Your Turn" changes using Gerrit filters
    - Manages state for both "Your Turn" and "Batch" lists
-   - Handles batch vote submission (+1/+2 for Code-Review label)
+   - **Full review support** - all voting options (-2 to +2), reviewers, CC, resolved
    - **Human-only submission** - votes require explicit user button clicks + confirmation
    - **Extensible API** for AI agents to inspect/modify batch (but NOT submit)
    - **Local HTTP API Server** for external script/AI automation
    - **Expandable file view** - click to expand any change and see its files
    - **File diff integration** - click any file to open VS Code diff view
+   - **Drag and drop** - drag changes between lists
 
 2. **Local HTTP API Server** (`src/lib/batchReviewApi/server.ts`)
    - Lightweight server using Node's built-in `http` module
@@ -30,13 +31,20 @@ A modern, main-pane **Batch Review** feature has been added to VSCode-Gerrit, al
 3. **Frontend UI** (`src/views/editor/batchReview/html/src/`)
    - React-based webview with modern, professional design
    - Two-list layout: "Your Turn" (top) and "Batch" (bottom)
+   - **Drag and drop** - drag items between lists (supports multi-select)
    - **Expandable change items** - click chevron to see files
    - **Clickable files** - opens diff view in VS Code
    - **AI confidence score display** (1-10) on batch items
    - **Score-based sorting** - batch sorted by AI confidence (highest first)
+   - **Full review panel**:
+     - Reviewers field with autocomplete
+     - CC field with autocomplete
+     - Comment textarea
+     - Resolved checkbox
+     - Score pickers for all labels (-2, -1, 0, +1, +2)
+     - Submit patch button
+     - Send button
    - Checkbox multi-selection with "Select All" functionality
-   - Buttons to move changes between lists
-   - Vote buttons (+1, +2) with optional message
    - Loading states and user feedback
    - Responsive design with VSCode theming and codicons
 
@@ -45,6 +53,8 @@ A modern, main-pane **Batch Review** feature has been added to VSCode-Gerrit, al
    - Responsive layout (stacks vertically on mobile, side-by-side on desktop)
    - File status indicators (Added, Modified, Deleted, Renamed)
    - Color-coded score badges (red→yellow→green for 1-10)
+   - Drag and drop visual feedback
+   - Review panel with score buttons
    - Proper accessibility and keyboard navigation
 
 ## 🚀 How to Use
@@ -52,12 +62,17 @@ A modern, main-pane **Batch Review** feature has been added to VSCode-Gerrit, al
 1. **Open Command Palette** (Ctrl+Shift+P / Cmd+Shift+P)
 2. **Type**: "Gerrit: Open Batch Review"
 3. **View "Your Turn" changes** - changes requiring your attention
-4. **Select changes** using checkboxes (or "Select All")
-5. **Add to Batch** using the arrow-down button
-6. **Optionally add a message** in the textarea
-7. **Vote** using +1 or +2 buttons
-8. **Confirm** the batch submission
-9. **Done!** All changes in batch receive your vote
+4. **Select changes** using checkboxes (or "Select All"), or **drag and drop** them
+5. **Add to Batch** using the arrow-down button or by dragging to the Batch section
+6. **Expand changes** - click the chevron to see files in each change
+7. **View diffs** - click any file to open the diff in VS Code
+8. **Configure review**:
+   - Add reviewers and CC using the autocomplete fields
+   - Write a comment
+   - Check "Resolved" if appropriate
+   - Select scores for each label (-2 to +2)
+9. **Submit** using "Submit patch" or "Send" button
+10. **Done!** All changes in batch receive your vote
 
 ## 🔐 Security Features
 
