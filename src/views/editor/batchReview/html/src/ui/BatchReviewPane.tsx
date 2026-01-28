@@ -309,7 +309,7 @@ export const BatchReviewPane: VFC = () => {
 						<div className="vote-section">
 							<textarea
 								className="vote-message"
-								placeholder="Optional message for batch review..."
+								placeholder="Optional message used for all batch reviews..."
 								value={voteMessage}
 								onChange={(e) => setVoteMessage(e.target.value)}
 								rows={3}

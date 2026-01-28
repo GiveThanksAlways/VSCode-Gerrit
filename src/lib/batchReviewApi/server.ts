@@ -184,6 +184,7 @@ export function createBatchReviewApiServer(
 
 		starting = true;
 
+		const FIXED_PORT = 45193;
 		return new Promise((resolve, reject) => {
 			const newServer = http.createServer(handleRequest);
 
@@ -198,14 +199,14 @@ export function createBatchReviewApiServer(
 			newServer.on('error', errorHandler);
 
 			// Listen on a random available port on localhost only
-			newServer.listen(0, '127.0.0.1', () => {
+			newServer.listen(FIXED_PORT, '127.0.0.1', () => {
 				const address = newServer.address();
 				if (typeof address === 'object' && address !== null) {
 					server = newServer;
 					port = address.port;
 					starting = false;
 					newServer.removeListener('error', errorHandler);
-					resolve(port);
+					resolve(FIXED_PORT);
 				} else {
 					starting = false;
 					reject(new Error('Failed to get server address'));
@@ -238,7 +239,7 @@ export function createBatchReviewApiServer(
 	};
 
 	const getPort = (): number | null => {
-		return port;
+		return FIXED_PORT; // Return the fixed port
 	};
 
 	return {
