@@ -145,10 +145,12 @@ export function createBatchReviewApiServer(
 						)) {
 							if (
 								typeof score === 'number' &&
+								Number.isFinite(score) &&
 								score >= 1 &&
 								score <= 10
 							) {
-								scores[changeID] = score;
+								// Round to integer for consistency
+								scores[changeID] = Math.round(score);
 							}
 						}
 					}

@@ -19,6 +19,13 @@ const FileItem: VFC<FileItemProps> = ({ file, changeID }) => {
 		});
 	};
 
+	const handleKeyDown = (e: React.KeyboardEvent) => {
+		if (e.key === 'Enter' || e.key === ' ') {
+			e.preventDefault();
+			handleFileClick();
+		}
+	};
+
 	const getStatusIcon = (status: BatchReviewFileInfo['status']) => {
 		switch (status) {
 			case 'A':
@@ -34,7 +41,14 @@ const FileItem: VFC<FileItemProps> = ({ file, changeID }) => {
 	};
 
 	return (
-		<div className="file-item" onClick={handleFileClick}>
+		<div
+			className="file-item"
+			onClick={handleFileClick}
+			onKeyDown={handleKeyDown}
+			tabIndex={0}
+			role="button"
+			aria-label={`Open diff for ${file.filePath}`}
+		>
 			<span className="codicon codicon-file"></span>
 			{getStatusIcon(file.status)}
 			<span className="file-path">{file.filePath}</span>

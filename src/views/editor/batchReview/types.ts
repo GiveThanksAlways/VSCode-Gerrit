@@ -11,7 +11,11 @@ export interface TypedWebviewPanel<M> extends WebviewPanel {
 
 export interface BatchReviewFileInfo {
 	filePath: string;
-	status: 'A' | 'M' | 'D' | 'R' | 'C' | 'W' | 'X' | null;
+	/**
+	 * File status. In Gerrit API, files without a status field are modified.
+	 * A = Added, D = Deleted, R = Renamed, M = Modified (default when no status)
+	 */
+	status: 'A' | 'M' | 'D' | 'R' | null;
 	linesInserted: number;
 	linesDeleted: number;
 }

@@ -272,30 +272,36 @@ class BatchReviewProvider implements Disposable {
 	): Promise<void> {
 		const changeID = msg.body.changeID;
 
-		// Find the change in either yourTurn or batch
-		let change = this._state.yourTurnChanges.find(
+		// Find the index of change in either yourTurn or batch
+		let changeIndex = this._state.yourTurnChanges.findIndex(
 			(c) => c.changeID === changeID
 		);
 		let changeList: 'yourTurn' | 'batch' = 'yourTurn';
-		if (!change) {
-			change = this._state.batchChanges.find(
+		if (changeIndex === -1) {
+			changeIndex = this._state.batchChanges.findIndex(
 				(c) => c.changeID === changeID
 			);
 			changeList = 'batch';
 		}
 
-		if (!change) {
+		if (changeIndex === -1) {
 			return;
 		}
 
 		// Fetch files from Gerrit API
 		const gerritChange = await GerritChange.getChangeOnce(changeID);
 		if (!gerritChange) {
+			void window.showErrorMessage(
+				`Could not fetch files for change ${changeID}`
+			);
 			return;
 		}
 
 		const currentRevision = await gerritChange.getCurrentRevision();
 		if (!currentRevision) {
+			void window.showErrorMessage(
+				`Could not fetch current revision for change ${changeID}`
+			);
 			return;
 		}
 
@@ -311,15 +317,23 @@ class BatchReviewProvider implements Disposable {
 			})
 		);
 
-		// Update the change with files info
-		change.files = files;
-		change.filesLoaded = true;
-
-		// Update the appropriate list
+		// Create a new change object with files info (immutable update)
 		if (changeList === 'yourTurn') {
-			this._state.yourTurnChanges = [...this._state.yourTurnChanges];
+			const existingChange = this._state.yourTurnChanges[changeIndex];
+			const updatedChange = { ...existingChange, files, filesLoaded: true };
+			this._state.yourTurnChanges = [
+				...this._state.yourTurnChanges.slice(0, changeIndex),
+				updatedChange,
+				...this._state.yourTurnChanges.slice(changeIndex + 1),
+			];
 		} else {
-			this._state.batchChanges = [...this._state.batchChanges];
+			const existingChange = this._state.batchChanges[changeIndex];
+			const updatedChange = { ...existingChange, files, filesLoaded: true };
+			this._state.batchChanges = [
+				...this._state.batchChanges.slice(0, changeIndex),
+				updatedChange,
+				...this._state.batchChanges.slice(changeIndex + 1),
+			];
 		}
 
 		await this._updateView();

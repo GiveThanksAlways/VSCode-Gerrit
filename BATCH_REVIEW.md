@@ -133,7 +133,7 @@ curl http://127.0.0.1:<port>/your-turn
 
 #### Security Notes
 - Server **only binds to localhost** (127.0.0.1) - not accessible from network
-- Uses a **random available port** for each session
+- Uses a **fixed port** (45193) for consistent access
 - **No voting/submission endpoints** - all review actions remain human-only
 - Server **only runs when explicitly started** by user action
 
