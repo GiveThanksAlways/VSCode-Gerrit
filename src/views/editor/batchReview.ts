@@ -72,21 +72,24 @@ class BatchReviewProvider implements Disposable {
 			return [];
 		}
 
-		return changes.map((change) => ({
-			changeID: change.changeID,
-			number: change.number,
-			subject: change.subject,
-			project: change.project,
-			branch: change.branch,
-			owner: {
-				name:
-					'name' in change.owner
-						? change.owner.name
-						: `Account ${change.owner._account_id}`,
-				accountID: change.owner._account_id,
-			},
-			updated: change.updated,
-		}));
+		return changes.map((change) => {
+			const ownerName: string =
+				'name' in change.owner
+					? (change.owner.name as string)
+					: `Account ${change.owner._account_id}`;
+			return {
+				changeID: change.changeID,
+				number: change.number,
+				subject: change.subject,
+				project: change.project,
+				branch: change.branch,
+				owner: {
+					name: ownerName,
+					accountID: change.owner._account_id,
+				},
+				updated: change.updated,
+			};
+		});
 	}
 
 	private async _handleGetYourTurnChanges(): Promise<void> {
