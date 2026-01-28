@@ -49,6 +49,10 @@
 				"title": "Maybe Diff"
 			},
 			{
+				"command": "gerrit.openBatchReview",
+				"title": "Open Batch Review"
+			},
+			{
 				"command": "gerrit.ackCommentThread",
 				"title": "Ack",
 				"icon": "$(record)"
@@ -277,6 +281,10 @@
 				"title": "Gerrit: Change git repo"
 			},
 			{
+				"command": "cmd.gerrit.openBatchReview",
+				"title": "Gerrit: Open Batch Review"
+			},
+			{
 				"command": "cmd.gerrit.checkConnection",
 				"title": "Gerrit: Check Connection"
 			},
@@ -393,6 +401,10 @@
 				},
 				{
 					"command": "gerrit.maybeDiff",
+					"when": "false"
+				},
+				{
+					"command": "gerrit.openBatchReview",
 					"when": "false"
 				},
 				{
@@ -593,6 +605,10 @@
 				},
 				{
 					"command": "cmd.gerrit.changeGitRepo",
+					"when": "true"
+				},
+				{
+					"command": "cmd.gerrit.openBatchReview",
 					"when": "true"
 				},
 				{
@@ -1445,10 +1461,15 @@
 		"build:review:codicons:css": "bun run copy node_modules/@vscode/codicons/dist/codicon.css out/review/codicon.css",
 		"build:review:codicons:ttf": "bun run copy node_modules/@vscode/codicons/dist/codicon.ttf out/review/codicon.ttf",
 		"build:review:css": "bun run copy src/views/activityBar/review/css/index.css out/review/index.css",
+		"build:batchReview:js": "esbuild --bundle --outfile=out/batchReview/index.js src/views/editor/batchReview/html/src/index.tsx --minify",
+		"build:debug:batchReview:js": "esbuild --bundle --outfile=out/batchReview/index.js src/views/editor/batchReview/html/src/index.tsx",
+		"build:batchReview:codicons:css": "bun run copy node_modules/@vscode/codicons/dist/codicon.css out/batchReview/codicon.css",
+		"build:batchReview:codicons:ttf": "bun run copy node_modules/@vscode/codicons/dist/codicon.ttf out/batchReview/codicon.ttf",
+		"build:batchReview:css": "bun run copy src/views/editor/batchReview/css/index.css out/batchReview/index.css",
 		"build:main": "esbuild --minify --bundle --outfile=out/extension.js src/extension.ts --platform=node --external:vscode",
 		"build:debug:main": "esbuild --bundle --outfile=out/extension.js src/extension.ts --platform=node --external:vscode --define:process.env.DEV_OVERRIDE=true",
-		"build": "rimraf ./out && bun run build:main && bun run build:review:js && bun run build:review:css && bun run build:review:codicons:css && bun run build:review:codicons:ttf",
-		"build:debug": "rimraf ./out && bun run build:debug:main && bun run build:debug:review:js && bun run build:review:css && bun run build:review:codicons:css && bun run build:review:codicons:ttf",
+		"build": "rimraf ./out && bun run build:main && bun run build:review:js && bun run build:review:css && bun run build:review:codicons:css && bun run build:review:codicons:ttf && bun run build:batchReview:js && bun run build:batchReview:css && bun run build:batchReview:codicons:css && bun run build:batchReview:codicons:ttf",
+		"build:debug": "rimraf ./out && bun run build:debug:main && bun run build:debug:review:js && bun run build:review:css && bun run build:review:codicons:css && bun run build:review:codicons:ttf && bun run build:debug:batchReview:js && bun run build:batchReview:css && bun run build:batchReview:codicons:css && bun run build:batchReview:codicons:ttf",
 		"pretest": "bun run compile && bun run lint",
 		"lint": "eslint src --ext ts",
 		"format-staged": "(git diff --ignore-submodules --quiet && bun format) || pretty-quick src/",

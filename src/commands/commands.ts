@@ -55,6 +55,7 @@ import { getChangeIDFromCheckoutString, gitReview } from '../lib/git/git';
 import { createAutoRegisterCommand } from 'vscode-generate-package-json';
 import { enterCredentials } from '../lib/credentials/enterCredentials';
 import { rebaseOntoParent, recursiveRebase } from '../lib/git/rebase';
+import { getOrCreateBatchReviewProvider } from '../views/editor/batchReview';
 import { CommentThread, ExtensionContext, Uri, window } from 'vscode';
 import { GerritChange } from '../lib/gerrit/gerritAPI/gerritChange';
 import { focusChange } from '../lib/commandHandlers/focusChange';
@@ -536,6 +537,17 @@ export function registerCommands(
 				return;
 			}
 			void openOnGitiles(gerritRepo, false, uri);
+		})
+	);
+
+	// Batch Review
+	context.subscriptions.push(
+		registerCommand(GerritExtensionCommands.OPEN_BATCH_REVIEW, async () => {
+			const provider = await getOrCreateBatchReviewProvider(
+				gerritRepo,
+				context
+			);
+			await provider.openBatchReview();
 		})
 	);
 }

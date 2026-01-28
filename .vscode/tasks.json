@@ -4,6 +4,19 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
+			"label": "build:debug",
+			"type": "shell",
+			"command": "bun run build:debug",
+			"problemMatcher": [],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"presentation": {
+				"reveal": "always"
+			}
+		},
+		{
 			"type": "bun",
 			"script": "compile:debug",
 			"problemMatcher": "$tsc-watch",
@@ -11,10 +24,7 @@
 			"presentation": {
 				"reveal": "never"
 			},
-			"group": {
-				"kind": "build",
-				"isDefault": true
-			}
+			"group": "none"
 		}
 	]
 }

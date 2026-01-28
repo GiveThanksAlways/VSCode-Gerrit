@@ -58,6 +58,10 @@ export const commands: {
 		title: 'Maybe Diff',
 		inCommandPalette: false,
 	},
+	'gerrit.openBatchReview': {
+		title: 'Open Batch Review',
+		inCommandPalette: contextProp('gerrit:connected'),
+	},
 	'gerrit.ackCommentThread': {
 		title: 'Ack',
 		icon: '$(record)',
