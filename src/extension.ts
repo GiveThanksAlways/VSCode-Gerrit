@@ -21,6 +21,7 @@ import { getCommentDecorationProvider } from './providers/commentDecorationProvi
 import { SearchResultsTreeProvider } from './views/activityBar/searchResults';
 import { CommentManager, DocumentManager } from './providers/commentProvider';
 import { getOrCreateReviewWebviewProvider } from './views/activityBar/review';
+import { getOrCreateBatchReviewProvider } from './views/editor/batchReview';
 import { getOrCreateChangesTreeProvider } from './views/activityBar/changes';
 import { FileProvider, GERRIT_FILE_SCHEME } from './providers/fileProvider';
 import { getConfiguration, initConfigListener } from './lib/vscode/config';
@@ -79,6 +80,17 @@ export async function activate(context: ExtensionContext): Promise<void> {
 	const statusBar = new CurrentChangeStatusBarManager();
 	context.subscriptions.push(statusBar);
 	registerCommands(statusBar, gerritRepo, context);
+
+	// Register batch review command
+	context.subscriptions.push(
+		registerCommand(GerritExtensionCommands.OPEN_BATCH_REVIEW, async () => {
+			const provider = await getOrCreateBatchReviewProvider(
+				gerritRepo,
+				context
+			);
+			await provider.openBatchReview();
+		})
+	);
 
 	const version = await (await getAPI(true))?.getGerritVersion();
 	if (version?.isSmallerThan(new VersionNumber(3, 4, 0))) {
