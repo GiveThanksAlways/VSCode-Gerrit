@@ -24,7 +24,7 @@ A modern, main-pane **Batch Review** feature has been added to VSCode-Gerrit, al
    - **No endpoints for voting/submitting** - those remain human-only
    - Server only runs when user explicitly requests automation
 
-2. **Frontend UI** (`src/views/editor/batchReview/html/src/`)
+3. **Frontend UI** (`src/views/editor/batchReview/html/src/`)
    - React-based webview with modern, professional design
    - Two-list layout: "Your Turn" (top) and "Batch" (bottom)
    - Checkbox multi-selection with "Select All" functionality
@@ -33,7 +33,7 @@ A modern, main-pane **Batch Review** feature has been added to VSCode-Gerrit, al
    - Loading states and user feedback
    - Responsive design with VSCode theming and codicons
 
-3. **Styling** (`src/views/editor/batchReview/css/index.css`)
+4. **Styling** (`src/views/editor/batchReview/css/index.css`)
    - Professional VSCode-themed UI
    - Responsive layout (stacks vertically on mobile, side-by-side on desktop)
    - Proper accessibility and keyboard navigation
@@ -137,7 +137,7 @@ src/views/editor/batchReview/html/src/lib/api.ts
 src/views/editor/batchReview/html/src/ui/BatchReviewPane.tsx (340+ lines)
 src/views/editor/batchReview/html/src/tsconfig.json
 src/views/editor/batchReview/css/index.css                   (390+ lines)
-src/lib/batchReviewApi/server.ts                             (185+ lines) [NEW]
+src/lib/batchReviewApi/server.ts                             (250 lines) [NEW]
 ```
 
 ### Modified Files (6 files)

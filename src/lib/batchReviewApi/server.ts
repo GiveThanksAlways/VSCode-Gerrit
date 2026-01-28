@@ -9,10 +9,14 @@
  * - Server only listens on localhost (127.0.0.1)
  * - No endpoints for voting/submitting reviews
  * - Server only runs when user explicitly requests automation
+ * - Request body size is limited to prevent memory issues
  */
 
 import * as http from 'http';
 import { BatchReviewChange } from '../../views/editor/batchReview/types';
+
+// Maximum request body size (1MB should be plenty for change IDs)
+const MAX_BODY_SIZE = 1024 * 1024;
 
 export interface BatchReviewApiCallbacks {
 	getBatch: () => BatchReviewChange[];
@@ -26,6 +30,15 @@ export interface BatchReviewApiServer {
 	stop: () => Promise<void>;
 	isRunning: () => boolean;
 	getPort: () => number | null;
+}
+
+/**
+ * Validates that all elements in the array are non-empty strings.
+ */
+function validateChangeIDs(changeIDs: unknown[]): changeIDs is string[] {
+	return changeIDs.every(
+		(id) => typeof id === 'string' && id.length > 0 && id.length < 1000
+	);
 }
 
 /**
@@ -46,26 +59,13 @@ export function createBatchReviewApiServer(
 ): BatchReviewApiServer {
 	let server: http.Server | null = null;
 	let port: number | null = null;
+	let starting = false;
 
 	const handleRequest = (
 		req: http.IncomingMessage,
 		res: http.ServerResponse
 	): void => {
-		// Set CORS headers for local development
-		res.setHeader('Access-Control-Allow-Origin', '*');
-		res.setHeader(
-			'Access-Control-Allow-Methods',
-			'GET, POST, DELETE, OPTIONS'
-		);
-		res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 		res.setHeader('Content-Type', 'application/json');
-
-		// Handle preflight requests
-		if (req.method === 'OPTIONS') {
-			res.writeHead(204);
-			res.end();
-			return;
-		}
 
 		const url = req.url || '/';
 		const method = req.method || 'GET';
@@ -88,17 +88,35 @@ export function createBatchReviewApiServer(
 		// Route: POST /batch
 		if (url === '/batch' && method === 'POST') {
 			let body = '';
+			let bodySize = 0;
+
 			req.on('data', (chunk: Buffer) => {
+				bodySize += chunk.length;
+				if (bodySize > MAX_BODY_SIZE) {
+					res.writeHead(413);
+					res.end(JSON.stringify({ error: 'Request body too large' }));
+					req.destroy();
+					return;
+				}
 				body += chunk.toString();
 			});
 			req.on('end', () => {
 				try {
-					const data = JSON.parse(body) as { changeIDs?: string[] };
+					const data = JSON.parse(body) as { changeIDs?: unknown[] };
 					if (!data.changeIDs || !Array.isArray(data.changeIDs)) {
 						res.writeHead(400);
 						res.end(
 							JSON.stringify({
 								error: 'Invalid request body. Expected { changeIDs: string[] }',
+							})
+						);
+						return;
+					}
+					if (!validateChangeIDs(data.changeIDs)) {
+						res.writeHead(400);
+						res.end(
+							JSON.stringify({
+								error: 'Invalid changeIDs. All elements must be non-empty strings.',
 							})
 						);
 						return;
@@ -154,39 +172,56 @@ export function createBatchReviewApiServer(
 	};
 
 	const start = async (): Promise<number> => {
-		if (server) {
-			return port!;
+		// Return existing port if already running
+		if (server && port !== null) {
+			return port;
 		}
 
+		// Prevent concurrent start attempts
+		if (starting) {
+			throw new Error('Server is already starting');
+		}
+
+		starting = true;
+
 		return new Promise((resolve, reject) => {
-			server = http.createServer(handleRequest);
+			const newServer = http.createServer(handleRequest);
 
-			// Listen on a random available port on localhost only
-			server.listen(0, '127.0.0.1', () => {
-				const address = server!.address();
-				if (typeof address === 'object' && address !== null) {
-					port = address.port;
-					resolve(port);
-				} else {
-					reject(new Error('Failed to get server address'));
-				}
-			});
-
-			server.on('error', (err) => {
+			const errorHandler = (err: Error): void => {
+				starting = false;
 				server = null;
 				port = null;
+				newServer.removeListener('error', errorHandler);
 				reject(err);
+			};
+
+			newServer.on('error', errorHandler);
+
+			// Listen on a random available port on localhost only
+			newServer.listen(0, '127.0.0.1', () => {
+				const address = newServer.address();
+				if (typeof address === 'object' && address !== null) {
+					server = newServer;
+					port = address.port;
+					starting = false;
+					newServer.removeListener('error', errorHandler);
+					resolve(port);
+				} else {
+					starting = false;
+					reject(new Error('Failed to get server address'));
+				}
 			});
 		});
 	};
 
 	const stop = async (): Promise<void> => {
-		if (!server) {
+		const currentServer = server;
+		if (!currentServer) {
 			return;
 		}
 
 		return new Promise((resolve, reject) => {
-			server!.close((err) => {
+			currentServer.close((err) => {
 				if (err) {
 					reject(err);
 				} else {

@@ -405,7 +405,9 @@ class BatchReviewProvider implements Disposable {
 				this._panel = null;
 				// Stop the API server when the panel is closed
 				if (this._apiServer?.isRunning()) {
-					void this._apiServer.stop();
+					this._apiServer.stop().catch(() => {
+						// Silently ignore stop errors on panel close
+					});
 				}
 			})
 		);
@@ -439,7 +441,9 @@ class BatchReviewProvider implements Disposable {
 		this._panel?.dispose();
 		// Stop the API server on disposal
 		if (this._apiServer?.isRunning()) {
-			void this._apiServer.stop();
+			this._apiServer.stop().catch(() => {
+				// Silently ignore stop errors on disposal
+			});
 		}
 	}
 }
