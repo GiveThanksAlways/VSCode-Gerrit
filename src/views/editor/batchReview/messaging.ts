@@ -34,6 +34,14 @@ export interface InspectBatchMessage {
 	type: 'inspectBatch';
 }
 
+export interface StartAutomationMessage {
+	type: 'startAutomation';
+}
+
+export interface StopAutomationMessage {
+	type: 'stopAutomation';
+}
+
 /**
  * Batch Review `postMessage` message types and their bodies.
  */
@@ -56,6 +64,8 @@ export type BatchReviewWebviewMessage =
 	| ClearBatchMessage
 	| SubmitBatchVoteMessage
 	| InspectBatchMessage
+	| StartAutomationMessage
+	| StopAutomationMessage
 	| {
 			type: 'batchVoteSuccess';
 			body: {
@@ -65,4 +75,11 @@ export type BatchReviewWebviewMessage =
 	  }
 	| {
 			type: 'batchVoteFailed';
+	  }
+	| {
+			type: 'automationStatus';
+			body: {
+				running: boolean;
+				port: number | null;
+			};
 	  };

@@ -15,6 +15,14 @@ A modern, main-pane **Batch Review** feature has been added to VSCode-Gerrit, al
    - Handles batch vote submission (+1/+2 for Code-Review label)
    - **Human-only submission** - votes require explicit user button clicks + confirmation
    - **Extensible API** for AI agents to inspect/modify batch (but NOT submit)
+   - **Local HTTP API Server** for external script/AI automation
+
+2. **Local HTTP API Server** (`src/lib/batchReviewApi/server.ts`)
+   - Lightweight server using Node's built-in `http` module
+   - Only listens on localhost (127.0.0.1) for security
+   - Exposes REST-like endpoints for batch list management
+   - **No endpoints for voting/submitting** - those remain human-only
+   - Server only runs when user explicitly requests automation
 
 2. **Frontend UI** (`src/views/editor/batchReview/html/src/`)
    - React-based webview with modern, professional design
@@ -69,20 +77,67 @@ const yourTurnChanges = provider.getYourTurnChanges();
 // NOTE: AI agents CANNOT submit votes - that's human-only!
 ```
 
+### Local HTTP API for External Automation
+
+When the user clicks "AI Automate Batch List" button, a local HTTP server starts that allows external scripts or AI tools to interact with the batch list.
+
+#### Starting/Stopping the API Server
+- Click **"AI Automate Batch List"** button in the Batch Review panel to start the server
+- Click **"Stop API"** button to stop the server
+- Server automatically stops when the Batch Review panel is closed
+
+#### API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health check - returns `{ "status": "ok" }` |
+| `/batch` | GET | Returns current batch list: `{ "batch": [...] }` |
+| `/batch` | POST | Adds changes to batch. Body: `{ "changeIDs": ["id1", "id2"] }` |
+| `/batch` | DELETE | Clears the entire batch list |
+| `/your-turn` | GET | Returns "Your Turn" changes (read-only): `{ "yourTurn": [...] }` |
+
+#### Example Usage
+
+```bash
+# Check server health
+curl http://127.0.0.1:<port>/health
+
+# Get current batch
+curl http://127.0.0.1:<port>/batch
+
+# Add changes to batch
+curl -X POST http://127.0.0.1:<port>/batch \
+  -H "Content-Type: application/json" \
+  -d '{"changeIDs": ["I1234567890abcdef", "I0987654321fedcba"]}'
+
+# Clear batch
+curl -X DELETE http://127.0.0.1:<port>/batch
+
+# Get "Your Turn" changes
+curl http://127.0.0.1:<port>/your-turn
+```
+
+#### Security Notes
+- Server **only binds to localhost** (127.0.0.1) - not accessible from network
+- Uses a **random available port** for each session
+- **No voting/submission endpoints** - all review actions remain human-only
+- Server **only runs when explicitly started** by user action
+
 ## 📁 Files Created
 
-### Source Code (10 new files)
+### Source Code (11 new files)
 ```
-src/views/editor/batchReview.ts                              (365 lines)
+src/views/editor/batchReview.ts                              (420+ lines)
 src/views/editor/batchReview/types.ts
 src/views/editor/batchReview/messaging.ts
 src/views/editor/batchReview/state.ts
 src/views/editor/batchReview/html.ts
 src/views/editor/batchReview/html/src/index.tsx
 src/views/editor/batchReview/html/src/lib/api.ts
-src/views/editor/batchReview/html/src/ui/BatchReviewPane.tsx (305 lines)
+src/views/editor/batchReview/html/src/ui/BatchReviewPane.tsx (340+ lines)
 src/views/editor/batchReview/html/src/tsconfig.json
-src/views/editor/batchReview/css/index.css                   (336 lines)
+src/views/editor/batchReview/css/index.css                   (390+ lines)
+src/lib/batchReviewApi/server.ts                             (185+ lines) [NEW]
 ```
 
 ### Modified Files (6 files)
@@ -140,12 +195,12 @@ The feature is **code-complete** and ready for manual testing:
 
 ## 📊 Statistics
 
-- **~1,700 lines** of new code
-- **10 new files** created
+- **~2,000 lines** of new code
+- **11 new files** created
 - **6 files** modified
-- **0 dependencies** added (uses existing React/VSCode APIs)
+- **0 dependencies** added (uses existing React/VSCode APIs + Node http module)
 - **Human-only submission** guaranteed
-- **AI-extensible** for batch management
+- **AI-extensible** for batch management via TypeScript API and HTTP API
 
 ## 🎨 UI Features
 

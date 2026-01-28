@@ -86,6 +86,10 @@ export const BatchReviewPane: VFC = () => {
 	);
 	const [selectedBatch, setSelectedBatch] = useState<Set<string>>(new Set());
 	const [voteMessage, setVoteMessage] = useState<string>('');
+	const [automationStatus, setAutomationStatus] = useState<{
+		running: boolean;
+		port: number | null;
+	}>({ running: false, port: null });
 
 	useEffect(() => {
 		const messageHandler = (event: MessageEvent) => {
@@ -100,6 +104,8 @@ export const BatchReviewPane: VFC = () => {
 				setVoteMessage('');
 			} else if (message.type === 'batchVoteFailed') {
 				alert('Batch review failed. Please try again.');
+			} else if (message.type === 'automationStatus') {
+				setAutomationStatus(message.body);
 			}
 		};
 
@@ -190,6 +196,14 @@ export const BatchReviewPane: VFC = () => {
 		vscode.postMessage({ type: 'getYourTurnChanges' });
 	};
 
+	const handleStartAutomation = () => {
+		vscode.postMessage({ type: 'startAutomation' });
+	};
+
+	const handleStopAutomation = () => {
+		vscode.postMessage({ type: 'stopAutomation' });
+	};
+
 	if (state.loading) {
 		return (
 			<div className="loading-container">
@@ -203,15 +217,46 @@ export const BatchReviewPane: VFC = () => {
 		<div className="batch-review-container">
 			<div className="header">
 				<h1>Batch Review</h1>
-				<button
-					className="refresh-button"
-					onClick={handleRefresh}
-					title="Refresh Your Turn changes"
-				>
-					<span className="codicon codicon-refresh"></span>
-					Refresh
-				</button>
+				<div className="header-buttons">
+					<button
+						className="refresh-button"
+						onClick={handleRefresh}
+						title="Refresh Your Turn changes"
+					>
+						<span className="codicon codicon-refresh"></span>
+						Refresh
+					</button>
+					{automationStatus.running ? (
+						<button
+							className="automation-button automation-stop"
+							onClick={handleStopAutomation}
+							title="Stop local API server"
+						>
+							<span className="codicon codicon-debug-stop"></span>
+							Stop API (:{automationStatus.port})
+						</button>
+					) : (
+						<button
+							className="automation-button automation-start"
+							onClick={handleStartAutomation}
+							title="Start local API server for AI/script automation"
+						>
+							<span className="codicon codicon-rocket"></span>
+							AI Automate Batch List
+						</button>
+					)}
+				</div>
 			</div>
+
+			{automationStatus.running && (
+				<div className="automation-status">
+					<span className="codicon codicon-broadcast"></span>
+					<span>
+						Local API running at{' '}
+						<code>http://127.0.0.1:{automationStatus.port}</code>
+					</span>
+				</div>
+			)}
 
 			<div className="lists-container">
 				<div className="your-turn-section">

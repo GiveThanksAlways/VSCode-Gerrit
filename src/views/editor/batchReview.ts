@@ -3,14 +3,11 @@ import {
 	ExtensionContext,
 	Uri,
 	ViewColumn,
-	WebviewPanel,
 	window,
 } from 'vscode';
 import {
 	AddToBatchMessage,
 	BatchReviewWebviewMessage,
-	ClearBatchMessage,
-	InspectBatchMessage,
 	RemoveFromBatchMessage,
 	SubmitBatchVoteMessage,
 } from './batchReview/messaging';
@@ -25,6 +22,10 @@ import {
 	DefaultChangeFilter,
 	GerritChangeFilter,
 } from '../../lib/gerrit/gerritAPI/filters';
+import {
+	createBatchReviewApiServer,
+	BatchReviewApiServer,
+} from '../../lib/batchReviewApi/server';
 
 class BatchReviewProvider implements Disposable {
 	private _panel: TypedWebviewPanel<BatchReviewWebviewMessage> | null = null;
@@ -34,6 +35,7 @@ class BatchReviewProvider implements Disposable {
 		batchChanges: [],
 		loading: false,
 	};
+	private _apiServer: BatchReviewApiServer | null = null;
 
 	private constructor(
 		private readonly _gerritRepo: Repository,
@@ -93,7 +95,9 @@ class BatchReviewProvider implements Disposable {
 	}
 
 	private async _handleGetYourTurnChanges(): Promise<void> {
-		if (!this._panel) return;
+		if (!this._panel) {
+			return;
+		}
 
 		this._state.loading = true;
 		await this._updateView();
@@ -170,7 +174,9 @@ class BatchReviewProvider implements Disposable {
 	private async _handleSubmitBatchVote(
 		msg: SubmitBatchVoteMessage
 	): Promise<void> {
-		if (!this._panel) return;
+		if (!this._panel) {
+			return;
+		}
 
 		// CRITICAL: This is human-only submission
 		// Verify this is a real user action, not programmatic
@@ -237,12 +243,89 @@ class BatchReviewProvider implements Disposable {
 		return;
 	}
 
+	private async _handleStartAutomation(): Promise<void> {
+		if (!this._panel) {
+			return;
+		}
+
+		// Create the API server if not already created
+		if (!this._apiServer) {
+			this._apiServer = createBatchReviewApiServer({
+				getBatch: () => this.getBatchChanges(),
+				getYourTurn: () => this.getYourTurnChanges(),
+				addToBatch: (changeIDs) => this.addToBatch(changeIDs),
+				clearBatch: () => {
+					void this._handleClearBatch();
+				},
+			});
+		}
+
+		// Start the server if not already running
+		if (!this._apiServer.isRunning()) {
+			try {
+				const port = await this._apiServer.start();
+				await this._sendAutomationStatus(true, port);
+				void window.showInformationMessage(
+					`Batch Review API server started on http://127.0.0.1:${port}`
+				);
+			} catch (err) {
+				void window.showErrorMessage(
+					`Failed to start Batch Review API server: ${err instanceof Error ? err.message : String(err)}`
+				);
+				await this._sendAutomationStatus(false, null);
+			}
+		} else {
+			// Already running, just send current status
+			await this._sendAutomationStatus(true, this._apiServer.getPort());
+		}
+	}
+
+	private async _handleStopAutomation(): Promise<void> {
+		if (this._apiServer?.isRunning()) {
+			try {
+				await this._apiServer.stop();
+				await this._sendAutomationStatus(false, null);
+				void window.showInformationMessage(
+					'Batch Review API server stopped'
+				);
+			} catch (err) {
+				void window.showErrorMessage(
+					`Failed to stop Batch Review API server: ${err instanceof Error ? err.message : String(err)}`
+				);
+			}
+		} else {
+			await this._sendAutomationStatus(false, null);
+		}
+	}
+
+	private async _sendAutomationStatus(
+		running: boolean,
+		port: number | null
+	): Promise<void> {
+		if (!this._panel) {
+			return;
+		}
+
+		await this._panel.webview.postMessage({
+			type: 'automationStatus',
+			body: {
+				running,
+				port,
+			},
+		});
+	}
+
 	private async _handleMessage(
 		msg: BatchReviewWebviewMessage
 	): Promise<void> {
 		switch (msg.type) {
 			case 'ready':
 				await this._handleGetYourTurnChanges();
+				// Send initial automation status
+				await this._sendAutomationStatus(
+					this._apiServer?.isRunning() ?? false,
+					this._apiServer?.getPort() ?? null
+				);
 				break;
 			case 'getYourTurnChanges':
 				await this._handleGetYourTurnChanges();
@@ -262,11 +345,19 @@ class BatchReviewProvider implements Disposable {
 			case 'inspectBatch':
 				await this._handleInspectBatch();
 				break;
+			case 'startAutomation':
+				await this._handleStartAutomation();
+				break;
+			case 'stopAutomation':
+				await this._handleStopAutomation();
+				break;
 		}
 	}
 
 	private async _updateView(): Promise<void> {
-		if (!this._panel) return;
+		if (!this._panel) {
+			return;
+		}
 
 		await this._panel.webview.postMessage({
 			type: 'stateToView',
@@ -312,6 +403,10 @@ class BatchReviewProvider implements Disposable {
 		this._disposables.push(
 			this._panel.onDidDispose(() => {
 				this._panel = null;
+				// Stop the API server when the panel is closed
+				if (this._apiServer?.isRunning()) {
+					void this._apiServer.stop();
+				}
 			})
 		);
 	}
@@ -342,6 +437,10 @@ class BatchReviewProvider implements Disposable {
 	public dispose(): void {
 		this._disposables.forEach((d) => d.dispose());
 		this._panel?.dispose();
+		// Stop the API server on disposal
+		if (this._apiServer?.isRunning()) {
+			void this._apiServer.stop();
+		}
 	}
 }
 
