@@ -16,17 +16,24 @@ A modern, main-pane **Batch Review** feature has been added to VSCode-Gerrit, al
    - **Human-only submission** - votes require explicit user button clicks + confirmation
    - **Extensible API** for AI agents to inspect/modify batch (but NOT submit)
    - **Local HTTP API Server** for external script/AI automation
+   - **Expandable file view** - click to expand any change and see its files
+   - **File diff integration** - click any file to open VS Code diff view
 
 2. **Local HTTP API Server** (`src/lib/batchReviewApi/server.ts`)
    - Lightweight server using Node's built-in `http` module
    - Only listens on localhost (127.0.0.1) for security
    - Exposes REST-like endpoints for batch list management
+   - **Supports AI confidence scores (1-10)** for prioritizing changes
    - **No endpoints for voting/submitting** - those remain human-only
    - Server only runs when user explicitly requests automation
 
 3. **Frontend UI** (`src/views/editor/batchReview/html/src/`)
    - React-based webview with modern, professional design
    - Two-list layout: "Your Turn" (top) and "Batch" (bottom)
+   - **Expandable change items** - click chevron to see files
+   - **Clickable files** - opens diff view in VS Code
+   - **AI confidence score display** (1-10) on batch items
+   - **Score-based sorting** - batch sorted by AI confidence (highest first)
    - Checkbox multi-selection with "Select All" functionality
    - Buttons to move changes between lists
    - Vote buttons (+1, +2) with optional message
@@ -36,6 +43,8 @@ A modern, main-pane **Batch Review** feature has been added to VSCode-Gerrit, al
 4. **Styling** (`src/views/editor/batchReview/css/index.css`)
    - Professional VSCode-themed UI
    - Responsive layout (stacks vertically on mobile, side-by-side on desktop)
+   - File status indicators (Added, Modified, Deleted, Renamed)
+   - Color-coded score badges (red→yellow→green for 1-10)
    - Proper accessibility and keyboard navigation
 
 ## 🚀 How to Use
@@ -92,7 +101,7 @@ When the user clicks "AI Automate Batch List" button, a local HTTP server starts
 |----------|--------|-------------|
 | `/health` | GET | Health check - returns `{ "status": "ok" }` |
 | `/batch` | GET | Returns current batch list: `{ "batch": [...] }` |
-| `/batch` | POST | Adds changes to batch. Body: `{ "changeIDs": ["id1", "id2"] }` |
+| `/batch` | POST | Adds changes to batch. Body: `{ "changeIDs": ["id1", "id2"], "scores": { "id1": 8, "id2": 5 } }` |
 | `/batch` | DELETE | Clears the entire batch list |
 | `/your-turn` | GET | Returns "Your Turn" changes (read-only): `{ "yourTurn": [...] }` |
 
@@ -105,10 +114,15 @@ curl http://127.0.0.1:<port>/health
 # Get current batch
 curl http://127.0.0.1:<port>/batch
 
-# Add changes to batch
+# Add changes to batch with AI confidence scores
 curl -X POST http://127.0.0.1:<port>/batch \
   -H "Content-Type: application/json" \
-  -d '{"changeIDs": ["I1234567890abcdef", "I0987654321fedcba"]}'
+  -d '{"changeIDs": ["I1234567890abcdef", "I0987654321fedcba"], "scores": {"I1234567890abcdef": 9, "I0987654321fedcba": 6}}'
+
+# Add changes without scores (manual review)
+curl -X POST http://127.0.0.1:<port>/batch \
+  -H "Content-Type: application/json" \
+  -d '{"changeIDs": ["I1234567890abcdef"]}'
 
 # Clear batch
 curl -X DELETE http://127.0.0.1:<port>/batch

@@ -42,6 +42,21 @@ export interface StopAutomationMessage {
 	type: 'stopAutomation';
 }
 
+export interface GetFilesForChangeMessage {
+	type: 'getFilesForChange';
+	body: {
+		changeID: string;
+	};
+}
+
+export interface OpenFileDiffMessage {
+	type: 'openFileDiff';
+	body: {
+		changeID: string;
+		filePath: string;
+	};
+}
+
 /**
  * Batch Review `postMessage` message types and their bodies.
  */
@@ -66,6 +81,8 @@ export type BatchReviewWebviewMessage =
 	| InspectBatchMessage
 	| StartAutomationMessage
 	| StopAutomationMessage
+	| GetFilesForChangeMessage
+	| OpenFileDiffMessage
 	| {
 			type: 'batchVoteSuccess';
 			body: {

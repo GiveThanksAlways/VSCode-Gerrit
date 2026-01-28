@@ -9,6 +9,13 @@ export interface TypedWebviewPanel<M> extends WebviewPanel {
 	webview: TypedWebview<M>;
 }
 
+export interface BatchReviewFileInfo {
+	filePath: string;
+	status: 'A' | 'M' | 'D' | 'R' | 'C' | 'W' | 'X' | null;
+	linesInserted: number;
+	linesDeleted: number;
+}
+
 export interface BatchReviewChange {
 	changeID: string;
 	number: number;
@@ -20,4 +27,17 @@ export interface BatchReviewChange {
 		accountID: number;
 	};
 	updated: string;
+	/**
+	 * Optional AI confidence score (1-10) for ranking.
+	 * Higher scores indicate higher AI confidence.
+	 */
+	score?: number;
+	/**
+	 * Files changed in this commit. Loaded on demand when expanded.
+	 */
+	files?: BatchReviewFileInfo[];
+	/**
+	 * Whether files have been loaded for this change.
+	 */
+	filesLoaded?: boolean;
 }

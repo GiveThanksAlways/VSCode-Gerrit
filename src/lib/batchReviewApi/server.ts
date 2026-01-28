@@ -18,10 +18,21 @@ import { BatchReviewChange } from '../../views/editor/batchReview/types';
 // Maximum request body size (1MB should be plenty for change IDs)
 const MAX_BODY_SIZE = 1024 * 1024;
 
+// Fixed port for the local API server
+const FIXED_PORT = 45193;
+
+/**
+ * Score mapping for changes being added to batch.
+ * Maps changeID to AI confidence score (1-10).
+ */
+export interface ScoreMap {
+	[changeID: string]: number;
+}
+
 export interface BatchReviewApiCallbacks {
 	getBatch: () => BatchReviewChange[];
 	getYourTurn: () => BatchReviewChange[];
-	addToBatch: (changeIDs: string[]) => void;
+	addToBatch: (changeIDs: string[], scores?: ScoreMap) => void;
 	clearBatch: () => void;
 }
 
@@ -46,7 +57,7 @@ function validateChangeIDs(changeIDs: unknown[]): changeIDs is string[] {
  *
  * API Endpoints:
  * - GET /batch — Returns the current batch list
- * - POST /batch — Adds changes to the batch list (body: { changeIDs: string[] })
+ * - POST /batch — Adds changes to the batch list (body: { changeIDs: string[], scores?: { [changeID: string]: number } })
  * - DELETE /batch — Clears the batch list
  * - GET /your-turn — Returns the "Your Turn" changes list (read-only)
  * - GET /health — Health check endpoint
@@ -102,12 +113,15 @@ export function createBatchReviewApiServer(
 			});
 			req.on('end', () => {
 				try {
-					const data = JSON.parse(body) as { changeIDs?: unknown[] };
+					const data = JSON.parse(body) as {
+						changeIDs?: unknown[];
+						scores?: Record<string, unknown>;
+					};
 					if (!data.changeIDs || !Array.isArray(data.changeIDs)) {
 						res.writeHead(400);
 						res.end(
 							JSON.stringify({
-								error: 'Invalid request body. Expected { changeIDs: string[] }',
+								error: 'Invalid request body. Expected { changeIDs: string[], scores?: { [changeID: string]: number } }',
 							})
 						);
 						return;
@@ -121,13 +135,33 @@ export function createBatchReviewApiServer(
 						);
 						return;
 					}
-					callbacks.addToBatch(data.changeIDs);
+
+					// Parse and validate scores if provided
+					let scores: ScoreMap | undefined;
+					if (data.scores && typeof data.scores === 'object') {
+						scores = {};
+						for (const [changeID, score] of Object.entries(
+							data.scores
+						)) {
+							if (
+								typeof score === 'number' &&
+								score >= 1 &&
+								score <= 10
+							) {
+								scores[changeID] = score;
+							}
+						}
+					}
+
+					callbacks.addToBatch(data.changeIDs, scores);
 					const batch = callbacks.getBatch();
 					res.writeHead(200);
-					res.end(JSON.stringify({
-						success: true,
-						batch,
-					}));
+					res.end(
+						JSON.stringify({
+							success: true,
+							batch,
+						})
+					);
 				} catch {
 					res.writeHead(400);
 					res.end(JSON.stringify({ error: 'Invalid JSON body' }));
@@ -184,7 +218,6 @@ export function createBatchReviewApiServer(
 
 		starting = true;
 
-		const FIXED_PORT = 45193;
 		return new Promise((resolve, reject) => {
 			const newServer = http.createServer(handleRequest);
 

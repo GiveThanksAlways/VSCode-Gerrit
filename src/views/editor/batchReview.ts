@@ -1,4 +1,5 @@
 import {
+	commands as vscodeCommands,
 	Disposable,
 	ExtensionContext,
 	Uri,
@@ -8,10 +9,16 @@ import {
 import {
 	AddToBatchMessage,
 	BatchReviewWebviewMessage,
+	GetFilesForChangeMessage,
+	OpenFileDiffMessage,
 	RemoveFromBatchMessage,
 	SubmitBatchVoteMessage,
 } from './batchReview/messaging';
-import { BatchReviewChange, TypedWebviewPanel } from './batchReview/types';
+import {
+	BatchReviewChange,
+	BatchReviewFileInfo,
+	TypedWebviewPanel,
+} from './batchReview/types';
 import { BatchReviewState } from './batchReview/state';
 import { GerritChange } from '../../lib/gerrit/gerritAPI/gerritChange';
 import { GerritAPIWith } from '../../lib/gerrit/gerritAPI/api';
@@ -22,9 +29,12 @@ import {
 	DefaultChangeFilter,
 	GerritChangeFilter,
 } from '../../lib/gerrit/gerritAPI/filters';
+import { FileTreeView } from '../activityBar/changes/changeTreeView/fileTreeView';
+import { GerritRevisionFileStatus } from '../../lib/gerrit/gerritAPI/types';
 import {
 	createBatchReviewApiServer,
 	BatchReviewApiServer,
+	ScoreMap,
 } from '../../lib/batchReviewApi/server';
 
 class BatchReviewProvider implements Disposable {
@@ -108,7 +118,10 @@ class BatchReviewProvider implements Disposable {
 		await this._updateView();
 	}
 
-	private async _handleAddToBatch(msg: AddToBatchMessage): Promise<void> {
+	private async _handleAddToBatch(
+		msg: AddToBatchMessage,
+		scores?: ScoreMap
+	): Promise<void> {
 		const changesToAdd = this._state.yourTurnChanges.filter((change) =>
 			msg.body.changeIDs.includes(change.changeID)
 		);
@@ -124,9 +137,20 @@ class BatchReviewProvider implements Disposable {
 					(c) => c.changeID === change.changeID
 				)
 			) {
+				// Apply score if provided
+				if (scores && scores[change.changeID] !== undefined) {
+					change.score = scores[change.changeID];
+				}
 				this._state.batchChanges.push(change);
 			}
 		}
+
+		// Sort batch changes by score (highest first)
+		this._state.batchChanges.sort((a, b) => {
+			const scoreA = a.score ?? 0;
+			const scoreB = b.score ?? 0;
+			return scoreB - scoreA;
+		});
 
 		await this._updateView();
 	}
@@ -243,6 +267,127 @@ class BatchReviewProvider implements Disposable {
 		return;
 	}
 
+	private async _handleGetFilesForChange(
+		msg: GetFilesForChangeMessage
+	): Promise<void> {
+		const changeID = msg.body.changeID;
+
+		// Find the change in either yourTurn or batch
+		let change = this._state.yourTurnChanges.find(
+			(c) => c.changeID === changeID
+		);
+		let changeList: 'yourTurn' | 'batch' = 'yourTurn';
+		if (!change) {
+			change = this._state.batchChanges.find(
+				(c) => c.changeID === changeID
+			);
+			changeList = 'batch';
+		}
+
+		if (!change) {
+			return;
+		}
+
+		// Fetch files from Gerrit API
+		const gerritChange = await GerritChange.getChangeOnce(changeID);
+		if (!gerritChange) {
+			return;
+		}
+
+		const currentRevision = await gerritChange.getCurrentRevision();
+		if (!currentRevision) {
+			return;
+		}
+
+		const filesSubscription = await currentRevision.files(null);
+		const filesRecord = await filesSubscription.getValue();
+
+		const files: BatchReviewFileInfo[] = Object.entries(filesRecord).map(
+			([filePath, gerritFile]) => ({
+				filePath,
+				status: this._mapFileStatus(gerritFile.status),
+				linesInserted: gerritFile.linesInserted ?? 0,
+				linesDeleted: gerritFile.linesDeleted ?? 0,
+			})
+		);
+
+		// Update the change with files info
+		change.files = files;
+		change.filesLoaded = true;
+
+		// Update the appropriate list
+		if (changeList === 'yourTurn') {
+			this._state.yourTurnChanges = [...this._state.yourTurnChanges];
+		} else {
+			this._state.batchChanges = [...this._state.batchChanges];
+		}
+
+		await this._updateView();
+	}
+
+	private _mapFileStatus(
+		status: GerritRevisionFileStatus | null
+	): BatchReviewFileInfo['status'] {
+		if (!status) {
+			return 'M'; // Default to modified
+		}
+		switch (status) {
+			case GerritRevisionFileStatus.ADDED:
+				return 'A';
+			case GerritRevisionFileStatus.DELETED:
+				return 'D';
+			case GerritRevisionFileStatus.RENAMED:
+				return 'R';
+			default:
+				return 'M';
+		}
+	}
+
+	private async _handleOpenFileDiff(
+		msg: OpenFileDiffMessage
+	): Promise<void> {
+		const { changeID, filePath } = msg.body;
+
+		// Get the change from Gerrit
+		const gerritChange = await GerritChange.getChangeOnce(changeID);
+		if (!gerritChange) {
+			void window.showErrorMessage(`Could not find change ${changeID}`);
+			return;
+		}
+
+		const currentRevision = await gerritChange.getCurrentRevision();
+		if (!currentRevision) {
+			void window.showErrorMessage(
+				`Could not find current revision for ${changeID}`
+			);
+			return;
+		}
+
+		const filesSubscription = await currentRevision.files(null);
+		const filesRecord = await filesSubscription.getValue();
+
+		const gerritFile = filesRecord[filePath];
+		if (!gerritFile) {
+			void window.showErrorMessage(`Could not find file ${filePath}`);
+			return;
+		}
+
+		// Use FileTreeView.createDiffCommand to create the diff command
+		const diffCommand = await FileTreeView.createDiffCommand(
+			this._gerritRepo,
+			gerritFile,
+			null
+		);
+
+		if (diffCommand) {
+			await vscodeCommands.executeCommand(
+				diffCommand.command,
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+				...(diffCommand.arguments ?? [])
+			);
+		}
+	}
+
 	private async _handleStartAutomation(): Promise<void> {
 		if (!this._panel) {
 			return;
@@ -253,7 +398,8 @@ class BatchReviewProvider implements Disposable {
 			this._apiServer = createBatchReviewApiServer({
 				getBatch: () => this.getBatchChanges(),
 				getYourTurn: () => this.getYourTurnChanges(),
-				addToBatch: (changeIDs) => this.addToBatch(changeIDs),
+				addToBatch: (changeIDs, scores) =>
+					this.addToBatch(changeIDs, scores),
 				clearBatch: () => {
 					void this._handleClearBatch();
 				},
@@ -351,6 +497,12 @@ class BatchReviewProvider implements Disposable {
 			case 'stopAutomation':
 				await this._handleStopAutomation();
 				break;
+			case 'getFilesForChange':
+				await this._handleGetFilesForChange(msg);
+				break;
+			case 'openFileDiff':
+				await this._handleOpenFileDiff(msg);
+				break;
 		}
 	}
 
@@ -414,11 +566,14 @@ class BatchReviewProvider implements Disposable {
 	}
 
 	// Extensible API for AI agents/automation (read/modify batch, but NOT submit)
-	public addToBatch(changeIDs: string[]): void {
-		void this._handleAddToBatch({
-			type: 'addToBatch',
-			body: { changeIDs },
-		});
+	public addToBatch(changeIDs: string[], scores?: ScoreMap): void {
+		void this._handleAddToBatch(
+			{
+				type: 'addToBatch',
+				body: { changeIDs },
+			},
+			scores
+		);
 	}
 
 	public removeFromBatch(changeIDs: string[]): void {

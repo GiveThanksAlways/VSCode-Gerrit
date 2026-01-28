@@ -390,3 +390,157 @@ button:disabled {
 .changes-container::-webkit-scrollbar-thumb:hover {
 	background: var(--vscode-scrollbarSlider-hoverBackground);
 }
+
+/* Expandable change item styles */
+.change-row {
+	display: flex;
+	align-items: flex-start;
+}
+
+.expand-button {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	margin: 10px 0 10px 8px;
+	padding: 0;
+	background: transparent;
+	border: none;
+	cursor: pointer;
+	border-radius: 3px;
+	flex-shrink: 0;
+}
+
+.expand-button:hover {
+	background-color: var(--vscode-toolbar-hoverBackground);
+}
+
+.expand-button .codicon {
+	font-size: 14px;
+	color: var(--vscode-foreground);
+}
+
+/* Files container */
+.files-container {
+	margin-left: 40px;
+	padding: 8px 16px 12px;
+	border-top: 1px solid var(--vscode-panel-border);
+	background-color: var(--vscode-editor-background);
+}
+
+.files-loading,
+.files-empty {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px;
+	color: var(--vscode-descriptionForeground);
+	font-size: 12px;
+	font-style: italic;
+}
+
+.file-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 4px 8px;
+	cursor: pointer;
+	border-radius: 3px;
+	font-size: 13px;
+}
+
+.file-item:hover {
+	background-color: var(--vscode-list-hoverBackground);
+}
+
+.file-item .codicon {
+	flex-shrink: 0;
+	color: var(--vscode-symbolIcon-fileForeground, var(--vscode-foreground));
+}
+
+.file-path {
+	flex: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.file-status {
+	font-size: 11px;
+	font-weight: 600;
+	padding: 1px 4px;
+	border-radius: 3px;
+	flex-shrink: 0;
+}
+
+.file-status-added {
+	background-color: rgba(35, 134, 54, 0.3);
+	color: #3fb950;
+}
+
+.file-status-deleted {
+	background-color: rgba(248, 81, 73, 0.3);
+	color: #f85149;
+}
+
+.file-status-modified {
+	background-color: rgba(187, 128, 9, 0.3);
+	color: #d29922;
+}
+
+.file-status-renamed {
+	background-color: rgba(139, 148, 158, 0.3);
+	color: #8b949e;
+}
+
+.file-stats {
+	display: flex;
+	gap: 6px;
+	font-size: 12px;
+	flex-shrink: 0;
+}
+
+.file-additions {
+	color: #3fb950;
+}
+
+.file-deletions {
+	color: #f85149;
+}
+
+/* Score badge styles */
+.change-score {
+	font-size: 11px;
+	font-weight: 700;
+	padding: 2px 6px;
+	border-radius: 10px;
+	margin-left: auto;
+	flex-shrink: 0;
+}
+
+/* Score color gradients (1=red, 5=yellow, 10=green) */
+.score-1, .score-2 {
+	background-color: rgba(248, 81, 73, 0.3);
+	color: #f85149;
+}
+
+.score-3, .score-4 {
+	background-color: rgba(255, 166, 87, 0.3);
+	color: #ffa657;
+}
+
+.score-5, .score-6 {
+	background-color: rgba(210, 153, 34, 0.3);
+	color: #d29922;
+}
+
+.score-7, .score-8 {
+	background-color: rgba(130, 209, 101, 0.3);
+	color: #56d364;
+}
+
+.score-9, .score-10 {
+	background-color: rgba(35, 134, 54, 0.3);
+	color: #3fb950;
+}

@@ -1,7 +1,161 @@
 import React, { VFC, useState, useEffect } from 'react';
 import { BatchReviewState } from '../../../state';
-import { BatchReviewChange } from '../../../types';
+import { BatchReviewChange, BatchReviewFileInfo } from '../../../types';
 import { vscode } from '../lib/api';
+
+interface FileItemProps {
+	file: BatchReviewFileInfo;
+	changeID: string;
+}
+
+const FileItem: VFC<FileItemProps> = ({ file, changeID }) => {
+	const handleFileClick = () => {
+		vscode.postMessage({
+			type: 'openFileDiff',
+			body: {
+				changeID,
+				filePath: file.filePath,
+			},
+		});
+	};
+
+	const getStatusIcon = (status: BatchReviewFileInfo['status']) => {
+		switch (status) {
+			case 'A':
+				return <span className="file-status file-status-added">A</span>;
+			case 'D':
+				return <span className="file-status file-status-deleted">D</span>;
+			case 'R':
+				return <span className="file-status file-status-renamed">R</span>;
+			case 'M':
+			default:
+				return <span className="file-status file-status-modified">M</span>;
+		}
+	};
+
+	return (
+		<div className="file-item" onClick={handleFileClick}>
+			<span className="codicon codicon-file"></span>
+			{getStatusIcon(file.status)}
+			<span className="file-path">{file.filePath}</span>
+			<span className="file-stats">
+				{file.linesInserted > 0 && (
+					<span className="file-additions">+{file.linesInserted}</span>
+				)}
+				{file.linesDeleted > 0 && (
+					<span className="file-deletions">-{file.linesDeleted}</span>
+				)}
+			</span>
+		</div>
+	);
+};
+
+interface ExpandableChangeItemProps {
+	change: BatchReviewChange;
+	selected: boolean;
+	onSelectionChange: (changeID: string, selected: boolean) => void;
+	showScore?: boolean;
+}
+
+const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
+	change,
+	selected,
+	onSelectionChange,
+	showScore = false,
+}) => {
+	const [expanded, setExpanded] = useState(false);
+	const [loadingFiles, setLoadingFiles] = useState(false);
+
+	const handleExpandClick = (e: React.MouseEvent) => {
+		e.preventDefault();
+		e.stopPropagation();
+
+		if (!expanded && !change.filesLoaded) {
+			setLoadingFiles(true);
+			vscode.postMessage({
+				type: 'getFilesForChange',
+				body: { changeID: change.changeID },
+			});
+		}
+		setExpanded(!expanded);
+	};
+
+	// When files are loaded, stop loading indicator
+	useEffect(() => {
+		if (change.filesLoaded) {
+			setLoadingFiles(false);
+		}
+	}, [change.filesLoaded]);
+
+	return (
+		<div className={`change-item ${selected ? 'selected' : ''}`}>
+			<div className="change-row">
+				<button
+					className="expand-button"
+					onClick={handleExpandClick}
+					title={expanded ? 'Collapse files' : 'Expand files'}
+				>
+					<span
+						className={`codicon ${
+							expanded ? 'codicon-chevron-down' : 'codicon-chevron-right'
+						}`}
+					></span>
+				</button>
+				<label className="change-checkbox">
+					<input
+						type="checkbox"
+						checked={selected}
+						onChange={(e) =>
+							onSelectionChange(change.changeID, e.target.checked)
+						}
+					/>
+					<div className="change-info">
+						<div className="change-header">
+							<span className="change-number">#{change.number}</span>
+							<span className="change-subject">{change.subject}</span>
+							{showScore && change.score !== undefined && (
+								<span
+									className={`change-score score-${Math.min(
+										10,
+										Math.max(1, Math.round(change.score))
+									)}`}
+									title={`AI confidence score: ${change.score}/10`}
+								>
+									{change.score}
+								</span>
+							)}
+						</div>
+						<div className="change-details">
+							<span className="change-project">{change.project}</span>
+							<span className="change-branch">{change.branch}</span>
+							<span className="change-owner">{change.owner.name}</span>
+						</div>
+					</div>
+				</label>
+			</div>
+			{expanded && (
+				<div className="files-container">
+					{loadingFiles ? (
+						<div className="files-loading">
+							<span className="codicon codicon-loading codicon-modifier-spin"></span>
+							<span>Loading files...</span>
+						</div>
+					) : change.files && change.files.length > 0 ? (
+						change.files.map((file) => (
+							<FileItem
+								key={file.filePath}
+								file={file}
+								changeID={change.changeID}
+							/>
+						))
+					) : (
+						<div className="files-empty">No files found</div>
+					)}
+				</div>
+			)}
+		</div>
+	);
+};
 
 interface ChangeListProps {
 	changes: BatchReviewChange[];
@@ -9,6 +163,7 @@ interface ChangeListProps {
 	onSelectionChange: (changeID: string, selected: boolean) => void;
 	onSelectAll: (selected: boolean) => void;
 	title: string;
+	showScores?: boolean;
 }
 
 const ChangeList: VFC<ChangeListProps> = ({
@@ -17,6 +172,7 @@ const ChangeList: VFC<ChangeListProps> = ({
 	onSelectionChange,
 	onSelectAll,
 	title,
+	showScores = false,
 }) => {
 	const allSelected =
 		changes.length > 0 && changes.every((c) => selectedChanges.has(c.changeID));
@@ -41,33 +197,13 @@ const ChangeList: VFC<ChangeListProps> = ({
 					<div className="empty-message">No changes</div>
 				) : (
 					changes.map((change) => (
-						<div
+						<ExpandableChangeItem
 							key={change.changeID}
-							className={`change-item ${
-								selectedChanges.has(change.changeID) ? 'selected' : ''
-							}`}
-						>
-							<label className="change-checkbox">
-								<input
-									type="checkbox"
-									checked={selectedChanges.has(change.changeID)}
-									onChange={(e) =>
-										onSelectionChange(change.changeID, e.target.checked)
-									}
-								/>
-								<div className="change-info">
-									<div className="change-header">
-										<span className="change-number">#{change.number}</span>
-										<span className="change-subject">{change.subject}</span>
-									</div>
-									<div className="change-details">
-										<span className="change-project">{change.project}</span>
-										<span className="change-branch">{change.branch}</span>
-										<span className="change-owner">{change.owner.name}</span>
-									</div>
-								</div>
-							</label>
-						</div>
+							change={change}
+							selected={selectedChanges.has(change.changeID)}
+							onSelectionChange={onSelectionChange}
+							showScore={showScores}
+						/>
 					))
 				)}
 			</div>
@@ -286,6 +422,7 @@ export const BatchReviewPane: VFC = () => {
 						onSelectionChange={handleBatchSelection}
 						onSelectAll={handleBatchSelectAll}
 						title="Batch"
+						showScores={true}
 					/>
 					<div className="batch-actions">
 						<div className="action-buttons">
