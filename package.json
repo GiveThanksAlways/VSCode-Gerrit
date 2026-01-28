@@ -49,6 +49,10 @@
 				"title": "Maybe Diff"
 			},
 			{
+				"command": "gerrit.openBatchReview",
+				"title": "Open Batch Review"
+			},
+			{
 				"command": "gerrit.ackCommentThread",
 				"title": "Ack",
 				"icon": "$(record)"
@@ -277,6 +281,10 @@
 				"title": "Gerrit: Change git repo"
 			},
 			{
+				"command": "cmd.gerrit.openBatchReview",
+				"title": "Gerrit: Open Batch Review"
+			},
+			{
 				"command": "cmd.gerrit.checkConnection",
 				"title": "Gerrit: Check Connection"
 			},
@@ -393,6 +401,10 @@
 				},
 				{
 					"command": "gerrit.maybeDiff",
+					"when": "false"
+				},
+				{
+					"command": "gerrit.openBatchReview",
 					"when": "false"
 				},
 				{
@@ -593,6 +605,10 @@
 				},
 				{
 					"command": "cmd.gerrit.changeGitRepo",
+					"when": "true"
+				},
+				{
+					"command": "cmd.gerrit.openBatchReview",
 					"when": "true"
 				},
 				{
