@@ -177,13 +177,6 @@ export const BatchReviewPane: VFC = () => {
 			return;
 		}
 
-		const confirmMsg = `Submit Code-Review ${score > 0 ? '+' : ''}${score} to ${
-			state.batchChanges.length
-		} change(s)?`;
-		if (!confirm(confirmMsg)) {
-			return;
-		}
-
 		vscode.postMessage({
 			type: 'submitBatchVote',
 			body: {
