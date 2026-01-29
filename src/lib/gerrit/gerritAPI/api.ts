@@ -23,6 +23,7 @@ import { PATCHSET_LEVEL_KEY } from '../../../views/activityBar/changes/changeTre
 import got, {
 	OptionsOfTextResponseBody,
 	PromiseCookieJar,
+	RequestError,
 	Response,
 } from 'got/dist/source';
 import { fileCache } from '../../../views/activityBar/changes/changeTreeView/file/fileCache';

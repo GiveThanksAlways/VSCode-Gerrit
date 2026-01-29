@@ -996,6 +996,10 @@ export const BatchReviewPane: VFC = () => {
 		running: boolean;
 		port: number | null;
 	}>({ running: false, port: null });
+	// Accordion state: 'batch' or 'individual' - only one can be open
+	const [openSection, setOpenSection] = useState<'batch' | 'individual'>(
+		'batch'
+	);
 
 	useEffect(() => {
 		const messageHandler = (event: MessageEvent) => {
@@ -1364,124 +1368,171 @@ export const BatchReviewPane: VFC = () => {
 						</div>
 
 						{/* Batch Actions Section - for +2 All operations */}
-						<div className="review-panel batch-operations">
-							<div className="section-header">
+						<div
+							className={`review-panel batch-operations ${openSection === 'batch' ? 'expanded' : 'collapsed'}`}
+						>
+							<div
+								className="section-header clickable"
+								onClick={() =>
+									setOpenSection(
+										openSection === 'batch'
+											? 'individual'
+											: 'batch'
+									)
+								}
+							>
+								<span
+									className={`codicon codicon-chevron-${openSection === 'batch' ? 'down' : 'right'}`}
+								></span>
 								<span className="codicon codicon-layers"></span>
-								Batch Actions
+								<span>Batch Actions</span>
 							</div>
-							<p className="section-description">
-								Apply +2 to all changes in batch at once
-							</p>
-							<div className="submit-buttons">
-								<button
-									onClick={handlePlus2All}
-									disabled={state.batchChanges.length === 0}
-									className="button-plus2"
-									title="Apply Code-Review +2 to all batch changes"
-								>
-									<span className="codicon codicon-pass"></span>
-									+2 All ({state.batchChanges.length})
-								</button>
-								<button
-									onClick={handlePlus2AllAndSubmit}
-									disabled={state.batchChanges.length === 0}
-									className="button-combo"
-									title="Apply +2 and submit all submittable changes"
-								>
-									<span className="codicon codicon-rocket"></span>
-									+2 All &amp; Submit
-								</button>
-							</div>
+							{openSection === 'batch' && (
+								<div className="section-content">
+									<div className="submit-buttons compact">
+										<button
+											onClick={handlePlus2All}
+											disabled={
+												state.batchChanges.length === 0
+											}
+											className="button-plus2"
+											title="Apply Code-Review +2 to all batch changes"
+										>
+											<span className="codicon codicon-pass"></span>
+											+2 All ({state.batchChanges.length})
+										</button>
+										<button
+											onClick={handlePlus2AllAndSubmit}
+											disabled={
+												state.batchChanges.length === 0
+											}
+											className="button-combo"
+											title="Apply +2 and submit all submittable changes"
+										>
+											<span className="codicon codicon-rocket"></span>
+											+2 &amp; Submit
+										</button>
+									</div>
+								</div>
+							)}
 						</div>
 
 						{/* Individual Review Section - for custom reviews */}
-						<div className="review-panel individual-review">
-							<div className="section-header">
+						<div
+							className={`review-panel individual-review ${openSection === 'individual' ? 'expanded' : 'collapsed'}`}
+						>
+							<div
+								className="section-header clickable"
+								onClick={() =>
+									setOpenSection(
+										openSection === 'individual'
+											? 'batch'
+											: 'individual'
+									)
+								}
+							>
+								<span
+									className={`codicon codicon-chevron-${openSection === 'individual' ? 'down' : 'right'}`}
+								></span>
 								<span className="codicon codicon-comment-discussion"></span>
-								Individual Review
+								<span>Individual Review</span>
 							</div>
-							<p className="section-description">
-								Add reviewers, CC, or custom scores
-							</p>
-
-							{/* Reviewers and CC */}
-							<PeoplePicker
-								label="Reviewers"
-								people={reviewers}
-								suggestions={state.suggestedReviewers ?? []}
-								onChange={setReviewers}
-								onSearch={handleReviewerSearch}
-								placeholder="Add reviewers..."
-							/>
-							<PeoplePicker
-								label="CC"
-								people={ccList}
-								suggestions={state.suggestedCC ?? []}
-								onChange={setCcList}
-								onSearch={handleCCSearch}
-								placeholder="Add CC..."
-							/>
-
-							{/* Comment */}
-							<div className="comment-section">
-								<textarea
-									className="vote-message"
-									placeholder="Say something nice..."
-									value={voteMessage}
-									onChange={(e) =>
-										setVoteMessage(e.target.value)
-									}
-									rows={3}
-								/>
-							</div>
-
-							{/* Resolved checkbox */}
-							<div className="resolved-section">
-								<label className="checkbox-label">
-									<input
-										type="checkbox"
-										checked={resolved}
-										onChange={(e) =>
-											setResolved(e.target.checked)
+							{openSection === 'individual' && (
+								<div className="section-content">
+									{/* Reviewers and CC */}
+									<PeoplePicker
+										label="Reviewers"
+										people={reviewers}
+										suggestions={
+											state.suggestedReviewers ?? []
 										}
+										onChange={setReviewers}
+										onSearch={handleReviewerSearch}
+										placeholder="Add reviewers..."
 									/>
-									<span>Resolved</span>
-								</label>
-							</div>
-
-							{/* Score pickers */}
-							<div className="score-pickers">
-								{(state.labels ?? []).map((label, i) => (
-									<ScorePicker
-										key={i}
-										label={label}
-										value={labelValues[label.name] ?? 0}
-										onChange={handleLabelChange}
+									<PeoplePicker
+										label="CC"
+										people={ccList}
+										suggestions={state.suggestedCC ?? []}
+										onChange={setCcList}
+										onSearch={handleCCSearch}
+										placeholder="Add CC..."
 									/>
-								))}
-							</div>
 
-							{/* Submit buttons */}
-							<div className="submit-buttons">
-								<button
-									onClick={handleSubmitPatch}
-									disabled={state.batchChanges.length === 0}
-									className="button-submit"
-									title="Submit all changes in batch"
-								>
-									<span className="codicon codicon-check-all"></span>
-									Submit patch ({state.batchChanges.length})
-								</button>
-								<button
-									onClick={handleSendReview}
-									disabled={state.batchChanges.length === 0}
-									className="button-send"
-									title="Send review for all changes in batch"
-								>
-									<span className="codicon codicon-comment"></span>
-									Send ({state.batchChanges.length})
-								</button>
-							</div>
+									{/* Comment */}
+									<div className="comment-section">
+										<textarea
+											className="vote-message"
+											placeholder="Say something nice..."
+											value={voteMessage}
+											onChange={(e) =>
+												setVoteMessage(e.target.value)
+											}
+											rows={3}
+										/>
+									</div>
+
+									{/* Resolved checkbox */}
+									<div className="resolved-section">
+										<label className="checkbox-label">
+											<input
+												type="checkbox"
+												checked={resolved}
+												onChange={(e) =>
+													setResolved(
+														e.target.checked
+													)
+												}
+											/>
+											<span>Resolved</span>
+										</label>
+									</div>
+
+									{/* Score pickers */}
+									<div className="score-pickers">
+										{(state.labels ?? []).map(
+											(label, i) => (
+												<ScorePicker
+													key={i}
+													label={label}
+													value={
+														labelValues[
+															label.name
+														] ?? 0
+													}
+													onChange={handleLabelChange}
+												/>
+											)
+										)}
+									</div>
+
+									{/* Submit buttons */}
+									<div className="submit-buttons">
+										<button
+											onClick={handleSubmitPatch}
+											disabled={
+												state.batchChanges.length === 0
+											}
+											className="button-submit"
+											title="Submit all changes in batch"
+										>
+											<span className="codicon codicon-check-all"></span>
+											Submit ({state.batchChanges.length})
+										</button>
+										<button
+											onClick={handleSendReview}
+											disabled={
+												state.batchChanges.length === 0
+											}
+											className="button-send"
+											title="Send review for all changes in batch"
+										>
+											<span className="codicon codicon-comment"></span>
+											Send ({state.batchChanges.length})
+										</button>
+									</div>
+								</div>
+							)}
 						</div>
 					</div>
 				</div>

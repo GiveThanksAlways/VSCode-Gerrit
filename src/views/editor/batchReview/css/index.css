@@ -1452,10 +1452,11 @@ button:active:not(:disabled) {
 		color-mix(in srgb, var(--vscode-editor-background) 95%, transparent)
 			100%
 	);
-	border-radius: 10px;
-	margin-top: 20px;
-	padding: 20px;
+	border-radius: 8px;
+	margin-top: 12px;
+	padding: 0;
 	box-shadow: var(--batch-shadow-sm);
+	overflow: hidden;
 }
 
 /* Enhanced Person Chips */
@@ -1634,17 +1635,42 @@ input:focus-visible,
 	font-size: 14px;
 	font-weight: 600;
 	color: var(--vscode-foreground);
-	margin-bottom: 4px;
+	margin-bottom: 0;
+	padding: 10px;
+}
+
+.section-header.clickable {
+	cursor: pointer;
+	border-radius: 6px;
+	user-select: none;
+}
+
+.section-header.clickable:hover {
+	background: rgba(255, 255, 255, 0.05);
 }
 
 .section-header .codicon {
-	font-size: 16px;
+	font-size: 14px;
 }
 
-.section-description {
-	font-size: 12px;
-	color: var(--vscode-descriptionForeground);
-	margin: 0 0 12px 0;
+.section-content {
+	padding: 0 10px 10px 10px;
+}
+
+/* Collapsed section styling */
+.review-panel.collapsed {
+	border-style: dashed;
+	opacity: 0.8;
+}
+
+.review-panel.expanded {
+	border-style: solid;
+}
+
+/* Compact button layout */
+.submit-buttons.compact {
+	display: flex;
+	gap: 8px;
 }
 
 /* Batch Operations Section */
