@@ -431,11 +431,13 @@ const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 	};
 
 	const handleRowClick = (e: React.MouseEvent) => {
-		// Shift or Ctrl/Cmd click handling
+		// Always call onItemClick to handle selection and set anchor
+		// For shift/ctrl clicks, do multi-select
+		// For plain clicks, just set the anchor for future shift-clicks
 		if (e.shiftKey || e.ctrlKey || e.metaKey) {
 			e.preventDefault();
-			onItemClick?.(change.changeID, index, e);
 		}
+		onItemClick?.(change.changeID, index, e);
 	};
 
 	return (
@@ -468,6 +470,14 @@ const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 					<input
 						type="checkbox"
 						checked={selected}
+						onClick={(e) => {
+							// If shift or ctrl is pressed, handle multi-select
+							if (e.shiftKey || e.ctrlKey || e.metaKey) {
+								e.preventDefault();
+								e.stopPropagation();
+								onItemClick?.(change.changeID, index, e);
+							}
+						}}
 						onChange={(e) =>
 							onSelectionChange(change.changeID, e.target.checked)
 						}

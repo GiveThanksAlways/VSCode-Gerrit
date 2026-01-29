@@ -218,8 +218,11 @@ body {
 }
 
 /* Open in Gerrit button - show on hover and focus-within */
+/* Uses visibility instead of display to prevent layout shift */
 .open-online-button {
-	display: none;
+	display: flex;
+	visibility: hidden;
+	opacity: 0;
 	align-items: center;
 	justify-content: center;
 	width: 28px;
@@ -244,7 +247,8 @@ body {
 
 .change-item:hover .open-online-button,
 .change-item:focus-within .open-online-button {
-	display: flex;
+	visibility: visible;
+	opacity: 1;
 }
 
 .change-checkbox {
@@ -1119,7 +1123,7 @@ button:active:not(:disabled) {
 .change-item {
 	border-bottom: 1px solid
 		color-mix(in srgb, var(--vscode-panel-border) 50%, transparent);
-	transition: all var(--batch-transition-fast);
+	/* No transition on selection for snappy feel - only border-left for subtle effect */
 }
 
 .change-item:last-child {
@@ -1127,25 +1131,13 @@ button:active:not(:disabled) {
 }
 
 .change-item:hover {
-	background: linear-gradient(
-		90deg,
-		var(--vscode-list-hoverBackground) 0%,
-		color-mix(in srgb, var(--vscode-list-hoverBackground) 50%, transparent)
-			100%
-	);
+	/* Instant solid color on hover - no gradients for performance */
+	background-color: var(--vscode-list-hoverBackground);
 }
 
 .change-item.selected {
-	background: linear-gradient(
-		90deg,
-		var(--vscode-list-activeSelectionBackground) 0%,
-		color-mix(
-				in srgb,
-				var(--vscode-list-activeSelectionBackground) 70%,
-				transparent
-			)
-			100%
-	);
+	/* Instant solid color selection - no gradients for performance */
+	background-color: var(--vscode-list-activeSelectionBackground);
 	border-left: 3px solid var(--vscode-focusBorder);
 }
 
