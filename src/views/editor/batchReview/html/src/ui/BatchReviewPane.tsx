@@ -1228,7 +1228,7 @@ export const BatchReviewPane: VFC = () => {
 				// Moving from batch to yourTurn
 				vscode.postMessage({
 					type: 'removeFromBatch',
-					body: { changeIDs },
+					body: { changeIDs, dropIndex },
 				});
 				setSelectedBatch(new Set());
 			}

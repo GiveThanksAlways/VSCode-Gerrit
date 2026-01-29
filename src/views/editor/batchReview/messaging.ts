@@ -16,6 +16,7 @@ export interface RemoveFromBatchMessage {
 	type: 'removeFromBatch';
 	body: {
 		changeIDs: string[];
+		dropIndex?: number;
 	};
 }
 

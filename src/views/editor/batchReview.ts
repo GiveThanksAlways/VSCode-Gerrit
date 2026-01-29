@@ -147,6 +147,8 @@ class BatchReviewProvider implements Disposable {
 			(change) => !msg.body.changeIDs.includes(change.changeID)
 		);
 
+		// Prepare changes to insert (filter duplicates and apply scores)
+		const newChanges: typeof changesToAdd = [];
 		for (const change of changesToAdd) {
 			if (
 				!this._state.batchChanges.some(
@@ -157,16 +159,30 @@ class BatchReviewProvider implements Disposable {
 				if (scores && scores[change.changeID] !== undefined) {
 					change.score = scores[change.changeID];
 				}
-				this._state.batchChanges.push(change);
+				newChanges.push(change);
 			}
 		}
 
-		// Sort batch changes by score (highest first)
-		this._state.batchChanges.sort((a, b) => {
-			const scoreA = a.score ?? 0;
-			const scoreB = b.score ?? 0;
-			return scoreB - scoreA;
-		});
+		// Insert at dropIndex if provided, otherwise append and sort by score
+		if (
+			msg.body.dropIndex !== undefined &&
+			msg.body.dropIndex >= 0 &&
+			newChanges.length > 0
+		) {
+			const insertAt = Math.min(
+				msg.body.dropIndex,
+				this._state.batchChanges.length
+			);
+			this._state.batchChanges.splice(insertAt, 0, ...newChanges);
+		} else {
+			// Append and sort by score when no position specified
+			this._state.batchChanges.push(...newChanges);
+			this._state.batchChanges.sort((a, b) => {
+				const scoreA = a.score ?? 0;
+				const scoreB = b.score ?? 0;
+				return scoreB - scoreA;
+			});
+		}
 
 		// Fetch labels if this is the first item added to batch
 		if (changesToAdd.length > 0 && !this._state.labels) {
@@ -183,19 +199,32 @@ class BatchReviewProvider implements Disposable {
 			msg.body.changeIDs.includes(change.changeID)
 		);
 
-		// Remove from batch and add back to yourTurn
+		// Remove from batch
 		this._state.batchChanges = this._state.batchChanges.filter(
 			(change) => !msg.body.changeIDs.includes(change.changeID)
 		);
 
-		for (const change of changesToRemove) {
-			if (
+		// Filter out duplicates before adding back to yourTurn
+		const newChanges = changesToRemove.filter(
+			(change) =>
 				!this._state.yourTurnChanges.some(
 					(c) => c.changeID === change.changeID
 				)
-			) {
-				this._state.yourTurnChanges.push(change);
-			}
+		);
+
+		// Insert at dropIndex if provided, otherwise append
+		if (
+			msg.body.dropIndex !== undefined &&
+			msg.body.dropIndex >= 0 &&
+			newChanges.length > 0
+		) {
+			const insertAt = Math.min(
+				msg.body.dropIndex,
+				this._state.yourTurnChanges.length
+			);
+			this._state.yourTurnChanges.splice(insertAt, 0, ...newChanges);
+		} else {
+			this._state.yourTurnChanges.push(...newChanges);
 		}
 
 		await this._updateView();
