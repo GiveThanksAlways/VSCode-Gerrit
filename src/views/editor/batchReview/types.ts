@@ -44,4 +44,12 @@ export interface BatchReviewChange {
 	 * Whether files have been loaded for this change.
 	 */
 	filesLoaded?: boolean;
+	/**
+	 * Whether this change is submittable (can be merged).
+	 */
+	submittable?: boolean;
+	/**
+	 * Whether this change has Code-Review +2.
+	 */
+	hasCodeReviewPlus2?: boolean;
 }

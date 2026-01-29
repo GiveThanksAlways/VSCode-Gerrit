@@ -112,6 +112,106 @@ class BatchReviewProvider implements Disposable {
 		});
 	}
 
+	/**
+	 * Get "Incoming Reviews" - all open changes where you are a reviewer but not the owner.
+	 * Unlike "Your Turn", these stay visible until reviewed AND submitted.
+	 */
+	private async _getIncomingReviews(): Promise<BatchReviewChange[]> {
+		// Query: is:open reviewer:self -owner:self (open changes where I'm reviewer but not owner)
+		const filters: (DefaultChangeFilter | GerritChangeFilter)[] = [
+			DefaultChangeFilter.IS_OPEN,
+			DefaultChangeFilter.REVIEWER_SELF,
+			'-owner:self' as GerritChangeFilter,
+		];
+
+		const subscription = await GerritChange.getChanges(
+			[filters],
+			{ offset: 0, count: 100 },
+			undefined,
+			GerritAPIWith.DETAILED_ACCOUNTS,
+			GerritAPIWith.DETAILED_LABELS,
+			GerritAPIWith.SUBMITTABLE
+		);
+
+		if (!subscription) {
+			return [];
+		}
+
+		const changes = await subscription.getValue();
+		if (!changes) {
+			return [];
+		}
+
+		return changes.map((change) => {
+			const ownerName: string =
+				'name' in change.owner
+					? (change.owner.name as string)
+					: `Account ${change.owner._account_id}`;
+
+			// Check if change has Code-Review +2
+			const hasCodeReviewPlus2 = this._hasCodeReviewPlus2(change);
+
+			return {
+				changeID: change.changeID,
+				number: change.number,
+				subject: change.subject,
+				project: change.project,
+				branch: change.branch,
+				owner: {
+					name: ownerName,
+					accountID: change.owner._account_id,
+				},
+				updated: change.updated,
+				submittable: change.submittable ?? false,
+				hasCodeReviewPlus2,
+			};
+		});
+	}
+
+	/**
+	 * Check if a change has Code-Review +2.
+	 */
+	private _hasCodeReviewPlus2(change: GerritChange): boolean {
+		if (!change.labels) {
+			return false;
+		}
+		const codeReviewLabel = change.labels['Code-Review'];
+		if (!codeReviewLabel) {
+			return false;
+		}
+		// Check if there's an approved value or all.value includes +2
+		if (codeReviewLabel.approved) {
+			return true;
+		}
+		// Check all votes for +2
+		if (codeReviewLabel.all) {
+			return codeReviewLabel.all.some((vote) => vote.value === 2);
+		}
+		return false;
+	}
+
+	private async _handleGetIncomingReviews(): Promise<void> {
+		if (!this._panel) {
+			return;
+		}
+
+		this._state.loading = true;
+		await this._updateView();
+
+		const changes = await this._getIncomingReviews();
+
+		// Filter out changes that are already in the batch to avoid duplicates
+		const batchChangeIDs = new Set(
+			this._state.batchChanges.map((c) => c.changeID)
+		);
+		this._state.yourTurnChanges = changes.filter(
+			(change) => !batchChangeIDs.has(change.changeID)
+		);
+
+		this._state.loading = false;
+		await this._updateView();
+	}
+
 	private async _handleGetYourTurnChanges(): Promise<void> {
 		if (!this._panel) {
 			return;
@@ -330,6 +430,210 @@ class BatchReviewProvider implements Disposable {
 		// API for programmatic inspection (AI agents can use this)
 		// This does NOT allow submission, only inspection
 		return;
+	}
+
+	/**
+	 * Apply Code-Review +2 to all changes in batch.
+	 */
+	private async _handlePlus2All(): Promise<void> {
+		if (!this._panel) {
+			return;
+		}
+
+		const api = await getAPI();
+		if (!api) {
+			void window.showErrorMessage('Gerrit API not available');
+			return;
+		}
+
+		if (this._state.batchChanges.length === 0) {
+			void window.showInformationMessage('No changes in batch to +2');
+			return;
+		}
+
+		let successCount = 0;
+		let failureCount = 0;
+		const errors: string[] = [];
+
+		for (const change of this._state.batchChanges) {
+			const changeObj = await GerritChange.getChangeOnce(change.changeID);
+			if (!changeObj) {
+				failureCount++;
+				errors.push(`Change ${change.number}: Could not fetch change`);
+				continue;
+			}
+
+			const currentRevision = await changeObj.currentRevision();
+			if (!currentRevision) {
+				failureCount++;
+				errors.push(
+					`Change ${change.number}: Could not get current revision`
+				);
+				continue;
+			}
+
+			const result = await api.setReviewWithDetails(
+				change.changeID,
+				currentRevision.id,
+				{
+					labels: { 'Code-Review': 2 },
+					publishDrafts: false,
+					reviewers: [],
+					cc: [],
+				}
+			);
+
+			if (result.success) {
+				successCount++;
+				// Update the change's status in our state
+				change.hasCodeReviewPlus2 = true;
+			} else {
+				failureCount++;
+				errors.push(`Change ${change.number}: ${result.error}`);
+			}
+		}
+
+		// Refresh to update submittable status
+		await this._refreshBatchStatus();
+		await this._updateView();
+
+		if (errors.length > 0) {
+			void window.showErrorMessage(
+				`Failed to +2 some changes:\n${errors.slice(0, 5).join('\n')}${errors.length > 5 ? `\n...and ${errors.length - 5} more` : ''}`
+			);
+		} else {
+			void window.showInformationMessage(
+				`Successfully +2'd ${successCount} change(s)`
+			);
+		}
+	}
+
+	/**
+	 * Apply Code-Review +2 to all changes, then submit all that are submittable.
+	 */
+	private async _handlePlus2AllAndSubmit(): Promise<void> {
+		if (!this._panel) {
+			return;
+		}
+
+		const api = await getAPI();
+		if (!api) {
+			void window.showErrorMessage('Gerrit API not available');
+			return;
+		}
+
+		if (this._state.batchChanges.length === 0) {
+			void window.showInformationMessage('No changes in batch');
+			return;
+		}
+
+		// Step 1: +2 all changes
+		let plus2Success = 0;
+		let plus2Fail = 0;
+
+		for (const change of this._state.batchChanges) {
+			const changeObj = await GerritChange.getChangeOnce(change.changeID);
+			if (!changeObj) {
+				plus2Fail++;
+				continue;
+			}
+
+			const currentRevision = await changeObj.currentRevision();
+			if (!currentRevision) {
+				plus2Fail++;
+				continue;
+			}
+
+			const result = await api.setReviewWithDetails(
+				change.changeID,
+				currentRevision.id,
+				{
+					labels: { 'Code-Review': 2 },
+					publishDrafts: false,
+					reviewers: [],
+					cc: [],
+				}
+			);
+
+			if (result.success) {
+				plus2Success++;
+				change.hasCodeReviewPlus2 = true;
+			} else {
+				plus2Fail++;
+			}
+		}
+
+		// Step 2: Refresh status to see which are now submittable
+		await this._refreshBatchStatus();
+
+		// Step 3: Submit all submittable changes
+		let submitSuccess = 0;
+		let submitFail = 0;
+		const submitErrors: string[] = [];
+
+		const submittableChanges = this._state.batchChanges.filter(
+			(c) => c.submittable
+		);
+
+		for (const change of submittableChanges) {
+			const result = await api.submitWithDetails(change.changeID);
+
+			if (result.success) {
+				submitSuccess++;
+			} else {
+				submitFail++;
+				submitErrors.push(`Change ${change.number}: ${result.error}`);
+			}
+		}
+
+		// Remove submitted changes from batch
+		if (submitSuccess > 0) {
+			this._state.batchChanges = this._state.batchChanges.filter(
+				(c) =>
+					!submittableChanges.some(
+						(sc) => sc.changeID === c.changeID && c.submittable
+					)
+			);
+		}
+
+		await this._updateView();
+
+		// Show summary
+		const messages: string[] = [];
+		if (plus2Success > 0) {
+			messages.push(`+2'd ${plus2Success} change(s)`);
+		}
+		if (submitSuccess > 0) {
+			messages.push(`Submitted ${submitSuccess} change(s)`);
+		}
+		if (submitFail > 0) {
+			messages.push(`${submitFail} submit failure(s)`);
+		}
+
+		if (submitErrors.length > 0) {
+			void window.showErrorMessage(
+				`Some changes could not be submitted:\n${submitErrors.slice(0, 5).join('\n')}${submitErrors.length > 5 ? `\n...and ${submitErrors.length - 5} more` : ''}`
+			);
+		} else if (messages.length > 0) {
+			void window.showInformationMessage(messages.join(', '));
+		}
+	}
+
+	/**
+	 * Refresh the submittable status for all changes in batch.
+	 */
+	private async _refreshBatchStatus(): Promise<void> {
+		for (const change of this._state.batchChanges) {
+			const changeObj = await GerritChange.getChangeOnce(
+				change.changeID,
+				GerritAPIWith.SUBMITTABLE,
+				GerritAPIWith.DETAILED_LABELS
+			);
+			if (changeObj) {
+				change.submittable = changeObj.submittable ?? false;
+				change.hasCodeReviewPlus2 = this._hasCodeReviewPlus2(changeObj);
+			}
+		}
 	}
 
 	private _userOrGroupToPeople(
@@ -702,7 +1006,17 @@ class BatchReviewProvider implements Disposable {
 				);
 				break;
 			case 'getYourTurnChanges':
-				await this._handleGetYourTurnChanges();
+				// Legacy: use getIncomingReviews instead
+				await this._handleGetIncomingReviews();
+				break;
+			case 'getIncomingReviews':
+				await this._handleGetIncomingReviews();
+				break;
+			case 'plus2All':
+				await this._handlePlus2All();
+				break;
+			case 'plus2AllAndSubmit':
+				await this._handlePlus2AllAndSubmit();
 				break;
 			case 'addToBatch':
 				await this._handleAddToBatch(msg);

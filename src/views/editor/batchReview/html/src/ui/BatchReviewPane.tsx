@@ -512,6 +512,22 @@ const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 									{change.score}
 								</span>
 							)}
+							{change.hasCodeReviewPlus2 && (
+								<span
+									className="status-badge plus2"
+									title="Has Code-Review +2"
+								>
+									<span className="codicon codicon-check"></span>
+								</span>
+							)}
+							{change.submittable && (
+								<span
+									className="status-badge submittable"
+									title="Ready to submit"
+								>
+									<span className="codicon codicon-git-merge"></span>
+								</span>
+							)}
 						</div>
 						<div className="change-details">
 							<span className="change-project">
@@ -1152,8 +1168,22 @@ export const BatchReviewPane: VFC = () => {
 		vscode.postMessage({ type: 'submitBatch' });
 	};
 
+	const handlePlus2All = () => {
+		if (state.batchChanges.length === 0) {
+			return;
+		}
+		vscode.postMessage({ type: 'plus2All' });
+	};
+
+	const handlePlus2AllAndSubmit = () => {
+		if (state.batchChanges.length === 0) {
+			return;
+		}
+		vscode.postMessage({ type: 'plus2AllAndSubmit' });
+	};
+
 	const handleRefresh = () => {
-		vscode.postMessage({ type: 'getYourTurnChanges' });
+		vscode.postMessage({ type: 'getIncomingReviews' });
 	};
 
 	// Drag and Drop handlers
@@ -1254,7 +1284,7 @@ export const BatchReviewPane: VFC = () => {
 					<button
 						className="refresh-button"
 						onClick={handleRefresh}
-						title="Refresh Your Turn changes"
+						title="Refresh Incoming Reviews"
 					>
 						<span className="codicon codicon-refresh"></span>
 						Refresh
@@ -1279,7 +1309,7 @@ export const BatchReviewPane: VFC = () => {
 						onSelectionChange={handleYourTurnSelection}
 						onSelectAll={handleYourTurnSelectAll}
 						onMultiSelect={handleYourTurnMultiSelect}
-						title="Your Turn"
+						title="Incoming Reviews"
 						listType="yourTurn"
 						onDragStart={handleDragStart}
 						onDrop={handleDrop}
@@ -1391,6 +1421,26 @@ export const BatchReviewPane: VFC = () => {
 							</div>
 
 							{/* Submit buttons */}
+							<div className="submit-buttons">
+								<button
+									onClick={handlePlus2All}
+									disabled={state.batchChanges.length === 0}
+									className="button-plus2"
+									title="Apply Code-Review +2 to all batch changes"
+								>
+									<span className="codicon codicon-pass"></span>
+									+2 All ({state.batchChanges.length})
+								</button>
+								<button
+									onClick={handlePlus2AllAndSubmit}
+									disabled={state.batchChanges.length === 0}
+									className="button-combo"
+									title="Apply +2 and submit all submittable changes"
+								>
+									<span className="codicon codicon-rocket"></span>
+									+2 All &amp; Submit
+								</button>
+							</div>
 							<div className="submit-buttons">
 								<button
 									onClick={handleSubmitPatch}

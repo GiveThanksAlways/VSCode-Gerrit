@@ -1,7 +1,20 @@
 import { BatchReviewState } from './state';
 
+export interface GetIncomingReviewsMessage {
+	type: 'getIncomingReviews';
+}
+
+/** @deprecated Use GetIncomingReviewsMessage instead */
 export interface GetYourTurnChangesMessage {
 	type: 'getYourTurnChanges';
+}
+
+export interface Plus2AllMessage {
+	type: 'plus2All';
+}
+
+export interface Plus2AllAndSubmitMessage {
+	type: 'plus2AllAndSubmit';
 }
 
 export interface AddToBatchMessage {
@@ -119,6 +132,9 @@ export type BatchReviewWebviewMessage =
 			type: 'ready';
 	  }
 	| GetYourTurnChangesMessage
+	| GetIncomingReviewsMessage
+	| Plus2AllMessage
+	| Plus2AllAndSubmitMessage
 	| AddToBatchMessage
 	| RemoveFromBatchMessage
 	| ClearBatchMessage
