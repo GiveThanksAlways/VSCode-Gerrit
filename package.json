@@ -50,7 +50,8 @@
 			},
 			{
 				"command": "gerrit.openBatchReview",
-				"title": "Open Batch Review"
+				"title": "Open Batch Review",
+				"icon": "$(layers)"
 			},
 			{
 				"command": "gerrit.ackCommentThread",
@@ -405,7 +406,7 @@
 				},
 				{
 					"command": "gerrit.openBatchReview",
-					"when": "false"
+					"when": "gerrit:isUsingGerrit"
 				},
 				{
 					"command": "gerrit.ackCommentThread",
@@ -918,6 +919,11 @@
 					"command": "gerrit.configureChangeList",
 					"when": "view == gerrit:changeExplorer",
 					"group": "navigation@5"
+				},
+				{
+					"command": "gerrit.openBatchReview",
+					"when": "view == gerrit:changeExplorer || view == gerrit:review",
+					"group": "navigation@6"
 				}
 			],
 			"editor/title": [

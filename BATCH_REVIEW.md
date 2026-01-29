@@ -55,24 +55,34 @@ A modern, main-pane **Batch Review** feature has been added to VSCode-Gerrit, al
    - Color-coded score badges (red→yellow→green for 1-10)
    - Drag and drop visual feedback
    - Review panel with score buttons
+   - File view toggle (List/Tree mode)
    - Proper accessibility and keyboard navigation
 
 ## 🚀 How to Use
 
-1. **Open Command Palette** (Ctrl+Shift+P / Cmd+Shift+P)
-2. **Type**: "Gerrit: Open Batch Review"
-3. **View "Your Turn" changes** - changes requiring your attention
-4. **Select changes** using checkboxes (or "Select All"), or **drag and drop** them
-5. **Add to Batch** using the arrow-down button or by dragging to the Batch section
-6. **Expand changes** - click the chevron to see files in each change
-7. **View diffs** - click any file to open the diff in VS Code
-8. **Configure review**:
+### Opening Batch Review
+- **Option 1**: Click the **layers icon** (📚) in the Gerrit sidebar title bar
+- **Option 2**: Open Command Palette (Ctrl+Shift+P / Cmd+Shift+P) → Type "Gerrit: Open Batch Review"
+
+### Using Batch Review
+1. **View "Your Turn" changes** - changes requiring your attention
+2. **Select changes** using checkboxes (or "Select All"), or **drag and drop** them
+3. **Add to Batch** using the arrow-down button or by dragging to the Batch section
+4. **Toggle file view** - use the List/Tree buttons to switch between flat list and nested folder view
+5. **Expand changes** - click the chevron to see files in each change
+6. **View diffs** - click any file to open the diff in VS Code
+7. **Configure review**:
    - Add reviewers and CC using the autocomplete fields
    - Write a comment
    - Check "Resolved" if appropriate
    - Select scores for each label (-2 to +2)
-9. **Submit** using "Submit patch" or "Send" button
-10. **Done!** All changes in batch receive your vote
+8. **Submit** using "Submit patch" or "Send" button
+9. **Done!** All changes in batch receive your vote
+
+### Automatic API Server
+- The local API server **starts automatically** when you open Batch Review
+- Look for the green **✓ :PORT** indicator in the header
+- The server **stops automatically** when you close the panel
 
 ## 🔐 Security Features
 
