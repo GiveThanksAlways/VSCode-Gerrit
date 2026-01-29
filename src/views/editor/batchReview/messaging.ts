@@ -8,6 +8,7 @@ export interface AddToBatchMessage {
 	type: 'addToBatch';
 	body: {
 		changeIDs: string[];
+		dropIndex?: number;
 	};
 }
 
@@ -91,6 +92,15 @@ export interface OpenChangeOnlineMessage {
 	};
 }
 
+export interface ReorderChangesMessage {
+	type: 'reorderChanges';
+	body: {
+		changeIDs: string[];
+		targetList: 'yourTurn' | 'batch';
+		dropIndex: number;
+	};
+}
+
 /**
  * Batch Review `postMessage` message types and their bodies.
  */
@@ -121,6 +131,7 @@ export type BatchReviewWebviewMessage =
 	| SubmitBatchMessage
 	| SetFileViewModeMessage
 	| OpenChangeOnlineMessage
+	| ReorderChangesMessage
 	| {
 			type: 'batchVoteSuccess';
 			body: {

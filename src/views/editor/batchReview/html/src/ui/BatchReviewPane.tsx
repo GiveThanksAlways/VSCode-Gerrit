@@ -380,6 +380,7 @@ interface ExpandableChangeItemProps {
 	showScore?: boolean;
 	draggable?: boolean;
 	onDragStart?: (e: React.DragEvent, changeID: string) => void;
+	onDragOver?: (e: React.DragEvent, index: number) => void;
 	fileViewMode?: 'list' | 'tree';
 	index: number;
 	onItemClick?: (
@@ -387,6 +388,7 @@ interface ExpandableChangeItemProps {
 		index: number,
 		e: React.MouseEvent
 	) => void;
+	showDropIndicator?: 'before' | 'after' | null;
 }
 
 const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
@@ -396,9 +398,11 @@ const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 	showScore = false,
 	draggable = false,
 	onDragStart,
+	onDragOver,
 	fileViewMode = 'tree',
 	index,
 	onItemClick,
+	showDropIndicator = null,
 }) => {
 	const [expanded, setExpanded] = useState(false);
 	const [loadingFiles, setLoadingFiles] = useState(false);
@@ -440,11 +444,18 @@ const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 		onItemClick?.(change.changeID, index, e);
 	};
 
+	const handleItemDragOver = (e: React.DragEvent) => {
+		if (onDragOver) {
+			onDragOver(e, index);
+		}
+	};
+
 	return (
 		<div
-			className={`change-item ${selected ? 'selected' : ''} ${draggable ? 'draggable' : ''}`}
+			className={`change-item ${selected ? 'selected' : ''} ${draggable ? 'draggable' : ''} ${showDropIndicator === 'before' ? 'drop-indicator-before' : ''} ${showDropIndicator === 'after' ? 'drop-indicator-after' : ''}`}
 			draggable={draggable}
 			onDragStart={handleDragStart}
+			onDragOver={handleItemDragOver}
 			onClick={handleRowClick}
 		>
 			<div className="change-row">
@@ -584,7 +595,11 @@ interface ChangeListProps {
 		changeID: string,
 		listType: 'yourTurn' | 'batch'
 	) => void;
-	onDrop: (e: React.DragEvent, targetListType: 'yourTurn' | 'batch') => void;
+	onDrop: (
+		e: React.DragEvent,
+		targetListType: 'yourTurn' | 'batch',
+		dropIndex?: number
+	) => void;
 	fileViewMode?: 'list' | 'tree';
 	onFileViewModeChange?: (mode: 'list' | 'tree') => void;
 }
@@ -611,6 +626,8 @@ const ChangeList: VFC<ChangeListProps> = ({
 	const [anchorIndex, setAnchorIndex] = useState<number | null>(null);
 	// Track the previous changes array to detect reordering/modifications
 	const prevChangesRef = React.useRef<BatchReviewChange[]>(changes);
+	// Track drop target index for reordering
+	const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null);
 
 	// Reset anchor when changes array is modified (items added, removed, or reordered)
 	useEffect(() => {
@@ -631,18 +648,38 @@ const ChangeList: VFC<ChangeListProps> = ({
 		setIsDragOver(true);
 	};
 
-	const handleDragLeave = () => {
-		setIsDragOver(false);
+	const handleDragLeave = (e: React.DragEvent) => {
+		// Only reset if leaving the list entirely, not just moving between items
+		const relatedTarget = e.relatedTarget as Node | null;
+		const container = e.currentTarget as HTMLElement;
+		if (!relatedTarget || !container.contains(relatedTarget)) {
+			setIsDragOver(false);
+			setDropTargetIndex(null);
+		}
 	};
 
 	const handleDrop = (e: React.DragEvent) => {
 		e.preventDefault();
 		setIsDragOver(false);
-		onDrop(e, listType);
+		const targetIndex = dropTargetIndex;
+		setDropTargetIndex(null);
+		onDrop(e, listType, targetIndex ?? undefined);
 	};
 
 	const handleItemDragStart = (e: React.DragEvent, changeID: string) => {
 		onDragStart(e, changeID, listType);
+	};
+
+	const handleItemDragOver = (e: React.DragEvent, index: number) => {
+		e.preventDefault();
+		e.stopPropagation();
+		// Determine if we should drop above or below based on mouse position
+		const target = e.currentTarget as HTMLElement;
+		const rect = target.getBoundingClientRect();
+		const midpoint = rect.top + rect.height / 2;
+		// If mouse is above midpoint, insert before this item, else after
+		const insertIndex = e.clientY < midpoint ? index : index + 1;
+		setDropTargetIndex(insertIndex);
 	};
 
 	/**
@@ -729,20 +766,32 @@ const ChangeList: VFC<ChangeListProps> = ({
 						{isDragOver ? 'Drop here to add' : 'No changes'}
 					</div>
 				) : (
-					changes.map((change, index) => (
-						<ExpandableChangeItem
-							key={change.changeID}
-							change={change}
-							selected={selectedChanges.has(change.changeID)}
-							onSelectionChange={onSelectionChange}
-							showScore={showScores}
-							draggable={true}
-							onDragStart={handleItemDragStart}
-							fileViewMode={fileViewMode}
-							index={index}
-							onItemClick={handleItemClick}
-						/>
-					))
+					changes.map((change, index) => {
+						// Determine if this item should show a drop indicator
+						let indicator: 'before' | 'after' | null = null;
+						if (dropTargetIndex === index) {
+							indicator = 'before';
+						} else if (dropTargetIndex === index + 1) {
+							indicator = 'after';
+						}
+
+						return (
+							<ExpandableChangeItem
+								key={change.changeID}
+								change={change}
+								selected={selectedChanges.has(change.changeID)}
+								onSelectionChange={onSelectionChange}
+								showScore={showScores}
+								draggable={true}
+								onDragStart={handleItemDragStart}
+								onDragOver={handleItemDragOver}
+								fileViewMode={fileViewMode}
+								index={index}
+								onItemClick={handleItemClick}
+								showDropIndicator={indicator}
+							/>
+						);
+					})
 				)}
 			</div>
 		</div>
@@ -1139,7 +1188,8 @@ export const BatchReviewPane: VFC = () => {
 
 	const handleDrop = (
 		e: React.DragEvent,
-		targetList: 'yourTurn' | 'batch'
+		targetList: 'yourTurn' | 'batch',
+		dropIndex?: number
 	) => {
 		e.preventDefault();
 		const data = e.dataTransfer.getData('application/json');
@@ -1151,14 +1201,27 @@ export const BatchReviewPane: VFC = () => {
 				sourceList: 'yourTurn' | 'batch';
 			};
 
-			// Don't do anything if dropping on the same list
-			if (sourceList === targetList) return;
+			// Handle reordering within the same list
+			if (sourceList === targetList) {
+				// Reorder within the list
+				if (dropIndex !== undefined) {
+					vscode.postMessage({
+						type: 'reorderChanges',
+						body: {
+							changeIDs,
+							targetList,
+							dropIndex,
+						},
+					});
+				}
+				return;
+			}
 
 			if (targetList === 'batch') {
 				// Moving from yourTurn to batch
 				vscode.postMessage({
 					type: 'addToBatch',
-					body: { changeIDs },
+					body: { changeIDs, dropIndex },
 				});
 				setSelectedYourTurn(new Set());
 			} else {

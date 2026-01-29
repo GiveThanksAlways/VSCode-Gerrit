@@ -6,6 +6,7 @@ import {
 	OpenChangeOnlineMessage,
 	OpenFileDiffMessage,
 	RemoveFromBatchMessage,
+	ReorderChangesMessage,
 	SetFileViewModeMessage,
 	SubmitBatchVoteMessage,
 } from './batchReview/messaging';
@@ -689,6 +690,9 @@ class BatchReviewProvider implements Disposable {
 			case 'openChangeOnline':
 				await this._handleOpenChangeOnline(msg);
 				break;
+			case 'reorderChanges':
+				await this._handleReorderChanges(msg);
+				break;
 		}
 	}
 
@@ -713,6 +717,57 @@ class BatchReviewProvider implements Disposable {
 			return;
 		}
 		await env.openExternal(Uri.parse(url));
+	}
+
+	private async _handleReorderChanges(
+		msg: ReorderChangesMessage
+	): Promise<void> {
+		const { changeIDs, targetList, dropIndex } = msg.body;
+
+		// Get the target array
+		const targetArray =
+			targetList === 'batch'
+				? this._state.batchChanges
+				: this._state.yourTurnChanges;
+
+		// Build a set of IDs being moved
+		const movingSet = new Set(changeIDs);
+
+		// Separate items: those being moved and those staying
+		const movingItems = targetArray.filter((c) =>
+			movingSet.has(c.changeID)
+		);
+		const remainingItems = targetArray.filter(
+			(c) => !movingSet.has(c.changeID)
+		);
+
+		// Calculate adjusted drop index (items before the drop point that are NOT being moved)
+		let adjustedIndex = 0;
+		for (
+			let i = 0;
+			i < targetArray.length && adjustedIndex < dropIndex;
+			i++
+		) {
+			if (!movingSet.has(targetArray[i].changeID)) {
+				adjustedIndex++;
+			}
+		}
+
+		// Insert moving items at the adjusted position
+		const newArray = [
+			...remainingItems.slice(0, adjustedIndex),
+			...movingItems,
+			...remainingItems.slice(adjustedIndex),
+		];
+
+		// Update state
+		if (targetList === 'batch') {
+			this._state.batchChanges = newArray;
+		} else {
+			this._state.yourTurnChanges = newArray;
+		}
+
+		await this._updateView();
 	}
 
 	private async _updateView(): Promise<void> {
