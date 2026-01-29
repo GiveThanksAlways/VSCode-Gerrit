@@ -1,5 +1,6 @@
 import {
 	CancellationToken,
+	commands,
 	Disposable,
 	EventEmitter,
 	ExtensionContext,
@@ -416,6 +417,8 @@ class ReviewWebviewProvider implements WebviewViewProvider, Disposable {
 			await this._handlePublishMessage(msg, srcView);
 		} else if (msg.type === 'submit') {
 			await this._handleSubmitMessage(msg, srcView);
+		} else if (msg.type === 'openBatchReview') {
+			await commands.executeCommand('gerrit.openBatchReview');
 		}
 	}
 

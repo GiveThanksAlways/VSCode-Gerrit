@@ -353,6 +353,8 @@ interface ExpandableChangeItemProps {
 	draggable?: boolean;
 	onDragStart?: (e: React.DragEvent, changeID: string) => void;
 	fileViewMode?: 'list' | 'tree';
+	index: number;
+	onItemClick?: (changeID: string, index: number, e: React.MouseEvent) => void;
 }
 
 const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
@@ -363,6 +365,8 @@ const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 	draggable = false,
 	onDragStart,
 	fileViewMode = 'tree',
+	index,
+	onItemClick,
 }) => {
 	const [expanded, setExpanded] = useState(false);
 	const [loadingFiles, setLoadingFiles] = useState(false);
@@ -394,11 +398,20 @@ const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 		}
 	};
 
+	const handleRowClick = (e: React.MouseEvent) => {
+		// Shift or Ctrl/Cmd click handling
+		if (e.shiftKey || e.ctrlKey || e.metaKey) {
+			e.preventDefault();
+			onItemClick?.(change.changeID, index, e);
+		}
+	};
+
 	return (
 		<div
 			className={`change-item ${selected ? 'selected' : ''} ${draggable ? 'draggable' : ''}`}
 			draggable={draggable}
 			onDragStart={handleDragStart}
+			onClick={handleRowClick}
 		>
 			<div className="change-row">
 				{draggable && (
@@ -508,6 +521,7 @@ interface ChangeListProps {
 	selectedChanges: Set<string>;
 	onSelectionChange: (changeID: string, selected: boolean) => void;
 	onSelectAll: (selected: boolean) => void;
+	onRangeSelect: (fromIndex: number, toIndex: number) => void;
 	title: string;
 	showScores?: boolean;
 	listType: 'yourTurn' | 'batch';
@@ -522,6 +536,7 @@ const ChangeList: VFC<ChangeListProps> = ({
 	selectedChanges,
 	onSelectionChange,
 	onSelectAll,
+	onRangeSelect,
 	title,
 	showScores = false,
 	listType,
@@ -533,6 +548,7 @@ const ChangeList: VFC<ChangeListProps> = ({
 	const allSelected =
 		changes.length > 0 && changes.every((c) => selectedChanges.has(c.changeID));
 	const [isDragOver, setIsDragOver] = useState(false);
+	const [lastClickedIndex, setLastClickedIndex] = useState<number | null>(null);
 
 	const handleDragOver = (e: React.DragEvent) => {
 		e.preventDefault();
@@ -552,6 +568,22 @@ const ChangeList: VFC<ChangeListProps> = ({
 
 	const handleItemDragStart = (e: React.DragEvent, changeID: string) => {
 		onDragStart(e, changeID, listType);
+	};
+
+	const handleItemClick = (changeID: string, index: number, e: React.MouseEvent) => {
+		if (e.shiftKey && lastClickedIndex !== null) {
+			// Shift+Click: select range
+			const start = Math.min(lastClickedIndex, index);
+			const end = Math.max(lastClickedIndex, index);
+			onRangeSelect(start, end);
+		} else if (e.ctrlKey || e.metaKey) {
+			// Ctrl/Cmd+Click: toggle individual
+			onSelectionChange(changeID, !selectedChanges.has(changeID));
+			setLastClickedIndex(index);
+		} else {
+			// Normal click: just update last clicked index (checkbox handles toggle)
+			setLastClickedIndex(index);
+		}
 	};
 
 	return (
@@ -600,7 +632,7 @@ const ChangeList: VFC<ChangeListProps> = ({
 						{isDragOver ? 'Drop here to add' : 'No changes'}
 					</div>
 				) : (
-					changes.map((change) => (
+					changes.map((change, index) => (
 						<ExpandableChangeItem
 							key={change.changeID}
 							change={change}
@@ -610,6 +642,8 @@ const ChangeList: VFC<ChangeListProps> = ({
 							draggable={true}
 							onDragStart={handleItemDragStart}
 							fileViewMode={fileViewMode}
+							index={index}
+							onItemClick={handleItemClick}
 						/>
 					))
 				)}
@@ -682,6 +716,23 @@ const PeoplePicker: VFC<PeoplePickerProps> = ({
 }) => {
 	const [isOpen, setIsOpen] = useState(false);
 	const [query, setQuery] = useState('');
+	const containerRef = React.useRef<HTMLDivElement>(null);
+
+	// Close dropdown when clicking outside
+	useEffect(() => {
+		const handleClickOutside = (event: MouseEvent) => {
+			if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+				setIsOpen(false);
+			}
+		};
+
+		if (isOpen) {
+			document.addEventListener('mousedown', handleClickOutside);
+		}
+		return () => {
+			document.removeEventListener('mousedown', handleClickOutside);
+		};
+	}, [isOpen]);
 
 	const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const value = e.target.value;
@@ -713,7 +764,7 @@ const PeoplePicker: VFC<PeoplePickerProps> = ({
 	);
 
 	return (
-		<div className="people-picker">
+		<div className="people-picker" ref={containerRef}>
 			<span className="picker-label">{label}:</span>
 			<div className="picker-input-container">
 				<div className="selected-people">
@@ -736,7 +787,6 @@ const PeoplePicker: VFC<PeoplePickerProps> = ({
 					value={query}
 					onChange={handleInputChange}
 					onFocus={handleFocus}
-					onBlur={() => setTimeout(() => setIsOpen(false), 200)}
 					placeholder={placeholder}
 					className="people-input"
 				/>
@@ -862,6 +912,26 @@ export const BatchReviewPane: VFC = () => {
 		if (state.batchChanges.length === 0) return;
 		vscode.postMessage({ type: 'clearBatch' });
 		setSelectedBatch(new Set());
+	};
+
+	const handleYourTurnRangeSelect = (fromIndex: number, toIndex: number) => {
+		const newSelection = new Set(selectedYourTurn);
+		for (let i = fromIndex; i <= toIndex; i++) {
+			if (state.yourTurnChanges[i]) {
+				newSelection.add(state.yourTurnChanges[i].changeID);
+			}
+		}
+		setSelectedYourTurn(newSelection);
+	};
+
+	const handleBatchRangeSelect = (fromIndex: number, toIndex: number) => {
+		const newSelection = new Set(selectedBatch);
+		for (let i = fromIndex; i <= toIndex; i++) {
+			if (state.batchChanges[i]) {
+				newSelection.add(state.batchChanges[i].changeID);
+			}
+		}
+		setSelectedBatch(newSelection);
 	};
 
 	const handleFileViewModeChange = (mode: 'list' | 'tree') => {
@@ -1028,6 +1098,7 @@ export const BatchReviewPane: VFC = () => {
 						selectedChanges={selectedYourTurn}
 						onSelectionChange={handleYourTurnSelection}
 						onSelectAll={handleYourTurnSelectAll}
+						onRangeSelect={handleYourTurnRangeSelect}
 						title="Your Turn"
 						listType="yourTurn"
 						onDragStart={handleDragStart}
@@ -1053,6 +1124,7 @@ export const BatchReviewPane: VFC = () => {
 						selectedChanges={selectedBatch}
 						onSelectionChange={handleBatchSelection}
 						onSelectAll={handleBatchSelectAll}
+						onRangeSelect={handleBatchRangeSelect}
 						title="Batch"
 						showScores={true}
 						listType="batch"
