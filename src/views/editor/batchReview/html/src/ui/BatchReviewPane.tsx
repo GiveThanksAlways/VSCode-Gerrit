@@ -471,23 +471,23 @@ const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 						type="checkbox"
 						checked={selected}
 						onClick={(e) => {
-							// If shift or ctrl is pressed, handle multi-select
+							// Always toggle selection
+							onSelectionChange(change.changeID, !selected);
+							// Handle multi-select logic if modifier keys are pressed
 							if (e.shiftKey || e.ctrlKey || e.metaKey) {
-								e.preventDefault();
-								e.stopPropagation();
 								onItemClick?.(change.changeID, index, e);
 							}
 						}}
-						onChange={(e) =>
-							onSelectionChange(change.changeID, e.target.checked)
-						}
 					/>
 					<div className="change-info">
 						<div className="change-header">
 							<span className="change-number">
 								#{change.number}
 							</span>
-							<span className="change-subject">
+							<span
+								className="change-subject"
+								title={change.subject}
+							>
 								{change.subject}
 							</span>
 							{showScore && change.score !== undefined && (

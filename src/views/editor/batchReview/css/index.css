@@ -1,3 +1,41 @@
+.change-title,
+.change-subject,
+.change-meta {
+	max-width: 420px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.change-row,
+.change-info {
+	max-width: 100%;
+	min-width: 0;
+}
+
+.change-item:nth-child(even) {
+	background: rgba(255, 255, 255, 0.01);
+}
+.change-item:nth-child(odd) {
+	background: rgba(0, 0, 0, 0.04);
+}
+
+.list-header h2 {
+	font-size: 1.2em;
+	font-weight: 700;
+	border-bottom: 1.5px solid var(--vscode-panel-border);
+	padding-bottom: 2px;
+	margin-bottom: 0;
+}
+
+.action-bar {
+	position: sticky;
+	bottom: 0;
+	background: var(--vscode-editorWidget-background, #23272e);
+	box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
+	border-top: 1px solid var(--vscode-panel-border, #333);
+	z-index: 2;
+}
 :root {
 	--vscode-button-primary-background: var(--vscode-button-background);
 	--vscode-button-primary-foreground: var(--vscode-button-foreground);
@@ -18,9 +56,12 @@ body {
 }
 
 .batch-review-container {
-	padding: 20px;
+	display: flex;
+	flex-direction: column;
+	height: 100vh;
 	max-width: 1400px;
 	margin: 0 auto;
+	padding: 20px;
 }
 
 .header {
@@ -142,6 +183,8 @@ body {
 	display: flex;
 	flex-direction: column;
 	gap: 30px;
+	flex: 1 1 auto;
+	min-height: 0;
 }
 
 .your-turn-section,
@@ -149,6 +192,8 @@ body {
 	display: flex;
 	flex-direction: column;
 	gap: 15px;
+	flex: 1 1 0;
+	min-height: 0;
 }
 
 .change-list {
@@ -156,6 +201,10 @@ body {
 	border: 1px solid var(--vscode-panel-border);
 	border-radius: 4px;
 	overflow: hidden;
+	flex: 1 1 0;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
 }
 
 .list-header {
@@ -189,7 +238,8 @@ body {
 }
 
 .changes-container {
-	max-height: 400px;
+	flex: 1 1 auto;
+	min-height: 0;
 	overflow-y: auto;
 }
 
