@@ -477,19 +477,14 @@ const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 						}`}
 					></span>
 				</button>
-				<label className="change-checkbox">
-					<input
-						type="checkbox"
-						checked={selected}
-						onClick={(e) => {
-							// Always toggle selection
-							onSelectionChange(change.changeID, !selected);
-							// Handle multi-select logic if modifier keys are pressed
-							if (e.shiftKey || e.ctrlKey || e.metaKey) {
-								onItemClick?.(change.changeID, index, e);
-							}
-						}}
-					/>
+				   <label className="change-checkbox">
+					   <input
+						   type="checkbox"
+						   checked={selected}
+						   onChange={(e) => {
+							   onSelectionChange(change.changeID, e.target.checked);
+						   }}
+					   />
 					<div className="change-info">
 						<div className="change-header">
 							<span className="change-number">

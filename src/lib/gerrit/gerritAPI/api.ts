@@ -25,6 +25,7 @@ import got, {
 	PromiseCookieJar,
 	RequestError,
 	Response,
+	RequestError,
 } from 'got/dist/source';
 import { fileCache } from '../../../views/activityBar/changes/changeTreeView/file/fileCache';
 import {
@@ -1696,14 +1697,14 @@ export class GerritAPI {
 		}
 
 		try {
-			const response = await got(url, {
-				method: 'POST',
-				body: JSON.stringify({
-					labels: labels,
-				}),
-				cookieJar: this._getCookieJar({ method: 'POST', path: '' }),
-				...this._getRequestSettings(),
-			});
+			   const response = await got(url, {
+				   method: 'POST',
+				   body: JSON.stringify({
+					   labels: labels,
+				   }),
+				   cookieJar: this._getCookieJar({ method: 'POST', path: '' }),
+				   headers: this._headers(true),
+			   });
 
 			if (response.statusCode >= 200 && response.statusCode < 300) {
 				return { success: true };

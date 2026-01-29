@@ -515,16 +515,14 @@ class BatchReviewProvider implements Disposable {
 	 * Apply Code-Review +2 to all changes, then submit all that are submittable.
 	 */
 	private async _handlePlus2AllAndSubmit(): Promise<void> {
-		if (!this._panel) {
-			return;
-		}
+		console.log('[BatchReview] +2 & Submit combo button triggered');
+		if (!this._panel) return;
 
 		const api = await getAPI();
 		if (!api) {
 			void window.showErrorMessage('Gerrit API not available');
 			return;
 		}
-
 		if (this._state.batchChanges.length === 0) {
 			void window.showInformationMessage('No changes in batch');
 			return;
@@ -533,27 +531,23 @@ class BatchReviewProvider implements Disposable {
 		// Step 1: +2 all changes
 		let plus2Success = 0;
 		let plus2Fail = 0;
-
+		console.log('[BatchReview] Applying +2 to all batch changes:', this._state.batchChanges.map(c => c.changeID));
 		for (const change of this._state.batchChanges) {
 			const changeObj = await GerritChange.getChangeOnce(change.changeID);
 			if (!changeObj) {
 				plus2Fail++;
 				continue;
 			}
-
 			const currentRevision = await changeObj.currentRevision();
 			if (!currentRevision) {
 				plus2Fail++;
 				continue;
 			}
-
-			// Use setLabelsOnly to only set labels without modifying reviewers/CC
 			const result = await api.setLabelsOnly(
 				change.changeID,
 				currentRevision.id,
 				{ 'Code-Review': 2 }
 			);
-
 			if (result.success) {
 				plus2Success++;
 				change.hasCodeReviewPlus2 = true;
@@ -562,56 +556,34 @@ class BatchReviewProvider implements Disposable {
 			}
 		}
 
-		// Step 2: Refresh status to see which are now submittable
-		await this._refreshBatchStatus();
-
-		// Step 3: Submit all submittable changes
+		// Step 2: Submit all changes in the batch (same as _handleSubmitBatch)
 		let submitSuccess = 0;
 		let submitFail = 0;
-		const submitErrors: string[] = [];
-
-		const submittableChanges = this._state.batchChanges.filter(
-			(c) => c.submittable
-		);
-
-		for (const change of submittableChanges) {
+		const errors: string[] = [];
+		console.log('[BatchReview] Submitting all batch changes:', this._state.batchChanges.map(c => c.changeID));
+		for (const change of this._state.batchChanges) {
 			const result = await api.submitWithDetails(change.changeID);
-
 			if (result.success) {
 				submitSuccess++;
 			} else {
 				submitFail++;
-				submitErrors.push(`Change ${change.number}: ${result.error}`);
+				errors.push(`Change ${change.number}: ${result.error}`);
 			}
 		}
 
-		// Remove submitted changes from batch
-		if (submitSuccess > 0) {
-			this._state.batchChanges = this._state.batchChanges.filter(
-				(c) =>
-					!submittableChanges.some(
-						(sc) => sc.changeID === c.changeID && c.submittable
-					)
-			);
-		}
-
+		// Clear batch after submission (for UX, same as _handleSubmitBatch)
+		this._state.batchChanges = [];
 		await this._updateView();
 
 		// Show summary
 		const messages: string[] = [];
-		if (plus2Success > 0) {
-			messages.push(`+2'd ${plus2Success} change(s)`);
-		}
-		if (submitSuccess > 0) {
-			messages.push(`Submitted ${submitSuccess} change(s)`);
-		}
-		if (submitFail > 0) {
-			messages.push(`${submitFail} submit failure(s)`);
-		}
+		if (plus2Success > 0) messages.push(`+2'd ${plus2Success} change(s)`);
+		if (submitSuccess > 0) messages.push(`Submitted ${submitSuccess} change(s)`);
+		if (submitFail > 0) messages.push(`${submitFail} submit failure(s)`);
 
-		if (submitErrors.length > 0) {
+		if (errors.length > 0) {
 			void window.showErrorMessage(
-				`Some changes could not be submitted:\n${submitErrors.slice(0, 5).join('\n')}${submitErrors.length > 5 ? `\n...and ${submitErrors.length - 5} more` : ''}`
+				`Failed to submit ${submitFail} change(s):\n${errors.slice(0, 5).join('\n')}${errors.length > 5 ? `\n...and ${errors.length - 5} more` : ''}`
 			);
 		} else if (messages.length > 0) {
 			void window.showInformationMessage(messages.join(', '));
