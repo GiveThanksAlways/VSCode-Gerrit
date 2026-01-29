@@ -931,3 +931,458 @@ button:disabled {
 .tree-file-item {
 	padding-left: 16px;
 }
+
+/* ============================================
+   Creative UI Enhancements
+   Modern, professional styling with subtle effects
+   ============================================ */
+
+/* Custom Properties for Enhanced Theming */
+:root {
+	--batch-gradient-primary: linear-gradient(135deg, 
+		color-mix(in srgb, var(--vscode-button-background) 100%, transparent) 0%,
+		color-mix(in srgb, var(--vscode-button-background) 85%, #000) 100%
+	);
+	--batch-gradient-secondary: linear-gradient(135deg,
+		color-mix(in srgb, var(--vscode-button-secondaryBackground) 100%, transparent) 0%,
+		color-mix(in srgb, var(--vscode-button-secondaryBackground) 85%, #000) 100%
+	);
+	--batch-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.1);
+	--batch-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+	--batch-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+	--batch-glass-bg: color-mix(in srgb, var(--vscode-sideBar-background) 85%, transparent);
+	--batch-transition-fast: 150ms ease;
+	--batch-transition-normal: 250ms ease;
+}
+
+/* Enhanced Container with subtle gradient header */
+.batch-review-container {
+	position: relative;
+	padding: 24px;
+	max-width: 1400px;
+	margin: 0 auto;
+}
+
+/* Enhanced Header with modern styling */
+.header {
+	position: relative;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 24px;
+	padding: 16px 20px;
+	background: var(--batch-glass-bg);
+	border: 1px solid var(--vscode-panel-border);
+	border-radius: 8px;
+	box-shadow: var(--batch-shadow-sm);
+	backdrop-filter: blur(8px);
+}
+
+.header h1 {
+	font-size: 26px;
+	font-weight: 600;
+	background: linear-gradient(90deg, 
+		var(--vscode-foreground) 0%, 
+		color-mix(in srgb, var(--vscode-foreground) 70%, transparent) 100%
+	);
+	-webkit-background-clip: text;
+	background-clip: text;
+}
+
+/* Enhanced API Status with animated pulse */
+.api-status {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 14px;
+	border-radius: 20px;
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: 0.3px;
+	box-shadow: var(--batch-shadow-sm);
+}
+
+.api-status-running {
+	background: linear-gradient(135deg, 
+		rgba(35, 134, 54, 0.25) 0%, 
+		rgba(35, 134, 54, 0.15) 100%
+	);
+	color: #3fb950;
+	border: 1px solid rgba(63, 185, 80, 0.3);
+	animation: statusPulse 2s ease-in-out infinite;
+}
+
+@keyframes statusPulse {
+	0%, 100% { box-shadow: 0 0 0 0 rgba(63, 185, 80, 0.2); }
+	50% { box-shadow: 0 0 0 4px rgba(63, 185, 80, 0.1); }
+}
+
+/* Enhanced Buttons with gradient and shadow */
+button {
+	position: relative;
+	overflow: hidden;
+	transition: transform var(--batch-transition-fast), box-shadow var(--batch-transition-fast);
+}
+
+button:hover:not(:disabled) {
+	transform: translateY(-1px);
+	box-shadow: var(--batch-shadow-md);
+}
+
+button:active:not(:disabled) {
+	transform: translateY(0);
+	box-shadow: var(--batch-shadow-sm);
+}
+
+.button-primary {
+	background: var(--batch-gradient-primary);
+	box-shadow: var(--batch-shadow-sm);
+}
+
+.button-secondary {
+	background: var(--batch-gradient-secondary);
+}
+
+.refresh-button {
+	border-radius: 6px;
+	box-shadow: var(--batch-shadow-sm);
+}
+
+/* Enhanced Change List with glass effect */
+.change-list {
+	background: var(--batch-glass-bg);
+	border: 1px solid var(--vscode-panel-border);
+	border-radius: 10px;
+	overflow: hidden;
+	box-shadow: var(--batch-shadow-md);
+	backdrop-filter: blur(10px);
+}
+
+.list-header {
+	padding: 14px 18px;
+	background: linear-gradient(180deg,
+		color-mix(in srgb, var(--vscode-sideBarSectionHeader-background) 100%, transparent) 0%,
+		color-mix(in srgb, var(--vscode-sideBarSectionHeader-background) 90%, transparent) 100%
+	);
+	border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.list-header h2 {
+	font-size: 15px;
+	font-weight: 600;
+	letter-spacing: 0.3px;
+}
+
+/* Enhanced Change Items with better hover and selection states */
+.change-item {
+	border-bottom: 1px solid color-mix(in srgb, var(--vscode-panel-border) 50%, transparent);
+	transition: all var(--batch-transition-fast);
+}
+
+.change-item:last-child {
+	border-bottom: none;
+}
+
+.change-item:hover {
+	background: linear-gradient(90deg,
+		var(--vscode-list-hoverBackground) 0%,
+		color-mix(in srgb, var(--vscode-list-hoverBackground) 50%, transparent) 100%
+	);
+}
+
+.change-item.selected {
+	background: linear-gradient(90deg,
+		var(--vscode-list-activeSelectionBackground) 0%,
+		color-mix(in srgb, var(--vscode-list-activeSelectionBackground) 70%, transparent) 100%
+	);
+	border-left: 3px solid var(--vscode-focusBorder);
+}
+
+/* Enhanced Score Badges with glow effect */
+.change-score {
+	font-size: 11px;
+	font-weight: 700;
+	padding: 3px 8px;
+	border-radius: 12px;
+	margin-left: auto;
+	flex-shrink: 0;
+	box-shadow: var(--batch-shadow-sm);
+	transition: transform var(--batch-transition-fast), box-shadow var(--batch-transition-fast);
+}
+
+.change-item:hover .change-score {
+	transform: scale(1.05);
+}
+
+.score-9, .score-10 {
+	background: linear-gradient(135deg, rgba(35, 134, 54, 0.4) 0%, rgba(35, 134, 54, 0.25) 100%);
+	color: #3fb950;
+	border: 1px solid rgba(63, 185, 80, 0.3);
+	box-shadow: 0 0 8px rgba(63, 185, 80, 0.2);
+}
+
+.score-7, .score-8 {
+	background: linear-gradient(135deg, rgba(130, 209, 101, 0.4) 0%, rgba(130, 209, 101, 0.25) 100%);
+	color: #56d364;
+	border: 1px solid rgba(86, 211, 100, 0.3);
+}
+
+.score-5, .score-6 {
+	background: linear-gradient(135deg, rgba(210, 153, 34, 0.4) 0%, rgba(210, 153, 34, 0.25) 100%);
+	color: #d29922;
+	border: 1px solid rgba(210, 153, 34, 0.3);
+}
+
+.score-3, .score-4 {
+	background: linear-gradient(135deg, rgba(255, 166, 87, 0.4) 0%, rgba(255, 166, 87, 0.25) 100%);
+	color: #ffa657;
+	border: 1px solid rgba(255, 166, 87, 0.3);
+}
+
+.score-1, .score-2 {
+	background: linear-gradient(135deg, rgba(248, 81, 73, 0.4) 0%, rgba(248, 81, 73, 0.25) 100%);
+	color: #f85149;
+	border: 1px solid rgba(248, 81, 73, 0.3);
+}
+
+/* Enhanced Drag and Drop with better visual feedback */
+.drag-handle {
+	opacity: 0.5;
+	transition: opacity var(--batch-transition-fast), color var(--batch-transition-fast);
+}
+
+.change-item:hover .drag-handle {
+	opacity: 1;
+	color: var(--vscode-foreground);
+}
+
+.change-list.drag-over {
+	border: 2px dashed var(--vscode-focusBorder);
+	background: linear-gradient(180deg,
+		color-mix(in srgb, var(--vscode-focusBorder) 10%, transparent) 0%,
+		transparent 100%
+	);
+	box-shadow: 0 0 16px color-mix(in srgb, var(--vscode-focusBorder) 20%, transparent);
+}
+
+/* Enhanced Vote Section with card styling */
+.vote-section {
+	background: var(--batch-glass-bg);
+	border: 1px solid var(--vscode-panel-border);
+	border-radius: 10px;
+	padding: 20px;
+	box-shadow: var(--batch-shadow-md);
+	backdrop-filter: blur(10px);
+}
+
+/* Enhanced Score Picker Buttons */
+.score-button {
+	border-radius: 16px;
+	padding: 6px 10px;
+	font-weight: 600;
+	box-shadow: var(--batch-shadow-sm);
+	transition: all var(--batch-transition-fast);
+}
+
+.score-button:hover:not(:disabled) {
+	transform: translateY(-1px);
+	box-shadow: var(--batch-shadow-md);
+}
+
+.score-button.score-approved {
+	background: linear-gradient(135deg, #7fb66b 0%, #5a9a4a 100%);
+}
+
+.score-button.score-recommended {
+	background: linear-gradient(135deg, #3f6732 0%, #2d4b24 100%);
+}
+
+.score-button.score-rejected {
+	background: linear-gradient(135deg, #ac2d3e 0%, #8a2330 100%);
+}
+
+/* Enhanced Submit Buttons */
+.submit-buttons {
+	gap: 12px;
+	margin-top: 16px;
+}
+
+.button-submit, .button-send {
+	padding: 12px 20px;
+	border-radius: 8px;
+	font-size: 14px;
+	font-weight: 600;
+	letter-spacing: 0.3px;
+}
+
+.button-submit {
+	background: var(--batch-gradient-primary);
+	box-shadow: var(--batch-shadow-md);
+}
+
+.button-send {
+	background: var(--batch-gradient-secondary);
+	box-shadow: var(--batch-shadow-sm);
+}
+
+/* Enhanced Review Panel */
+.review-panel {
+	background: linear-gradient(180deg,
+		var(--vscode-editor-background) 0%,
+		color-mix(in srgb, var(--vscode-editor-background) 95%, transparent) 100%
+	);
+	border-radius: 10px;
+	margin-top: 20px;
+	padding: 20px;
+	box-shadow: var(--batch-shadow-sm);
+}
+
+/* Enhanced Person Chips */
+.person-chip {
+	background: linear-gradient(135deg,
+		var(--vscode-badge-background) 0%,
+		color-mix(in srgb, var(--vscode-badge-background) 85%, #000) 100%
+	);
+	border-radius: 16px;
+	padding: 4px 10px;
+	box-shadow: var(--batch-shadow-sm);
+	transition: transform var(--batch-transition-fast);
+}
+
+.person-chip:hover {
+	transform: scale(1.02);
+}
+
+/* Enhanced Suggestions Dropdown */
+.suggestions-dropdown {
+	border-radius: 8px;
+	box-shadow: var(--batch-shadow-lg);
+	margin-top: 4px;
+	backdrop-filter: blur(10px);
+}
+
+.suggestion-item {
+	padding: 10px 14px;
+	border-bottom: 1px solid color-mix(in srgb, var(--vscode-panel-border) 30%, transparent);
+	transition: background-color var(--batch-transition-fast);
+}
+
+.suggestion-item:last-child {
+	border-bottom: none;
+}
+
+/* Enhanced File Items */
+.file-item {
+	border-radius: 6px;
+	transition: all var(--batch-transition-fast);
+}
+
+.file-item:hover {
+	background: linear-gradient(90deg,
+		var(--vscode-list-hoverBackground) 0%,
+		transparent 100%
+	);
+	transform: translateX(2px);
+}
+
+.file-status {
+	box-shadow: var(--batch-shadow-sm);
+}
+
+/* Enhanced Loading State */
+.loading-container {
+	padding: 80px 40px;
+}
+
+.loading-container .codicon {
+	font-size: 40px;
+	animation: loadingPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes loadingPulse {
+	0%, 100% { opacity: 1; transform: scale(1); }
+	50% { opacity: 0.5; transform: scale(0.95); }
+}
+
+/* Enhanced Empty Message */
+.empty-message {
+	padding: 50px 30px;
+	font-size: 14px;
+	color: var(--vscode-descriptionForeground);
+}
+
+/* Enhanced Scrollbars */
+.changes-container::-webkit-scrollbar {
+	width: 8px;
+}
+
+.changes-container::-webkit-scrollbar-track {
+	background: transparent;
+	border-radius: 4px;
+}
+
+.changes-container::-webkit-scrollbar-thumb {
+	background: color-mix(in srgb, var(--vscode-scrollbarSlider-background) 80%, transparent);
+	border-radius: 4px;
+}
+
+.changes-container::-webkit-scrollbar-thumb:hover {
+	background: var(--vscode-scrollbarSlider-hoverBackground);
+}
+
+/* Enhanced View Mode Toggle */
+.view-mode-toggle {
+	border-radius: 8px;
+	padding: 3px;
+	box-shadow: inset var(--batch-shadow-sm);
+}
+
+.view-mode-btn {
+	padding: 6px 8px;
+	border-radius: 6px;
+	transition: all var(--batch-transition-fast);
+}
+
+.view-mode-btn.active {
+	background: var(--batch-gradient-primary);
+	box-shadow: var(--batch-shadow-sm);
+}
+
+/* Smooth Animations for Expand */
+.files-container {
+	animation: slideDown 200ms ease-out;
+}
+
+@keyframes slideDown {
+	from {
+		opacity: 0;
+		transform: translateY(-8px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+/* Enhanced Expand Button */
+.expand-button {
+	border-radius: 6px;
+	transition: all var(--batch-transition-fast);
+}
+
+.expand-button:hover {
+	background: var(--vscode-toolbar-hoverBackground);
+	transform: scale(1.1);
+}
+
+.expand-button .codicon {
+	transition: transform var(--batch-transition-fast);
+}
+
+/* Focus States for Accessibility */
+button:focus-visible,
+input:focus-visible,
+.file-item:focus-visible {
+	outline: 2px solid var(--vscode-focusBorder);
+	outline-offset: 2px;
+}
