@@ -264,22 +264,28 @@ class BatchReviewProvider implements Disposable {
 
 		let successCount = 0;
 		let failureCount = 0;
+		const errors: string[] = [];
 
 		// Submit vote for each change in batch
 		for (const change of this._state.batchChanges) {
 			const changeObj = await GerritChange.getChangeOnce(change.changeID);
 			if (!changeObj) {
 				failureCount++;
+				errors.push(`Change ${change.number}: Could not fetch change`);
 				continue;
 			}
 
 			const currentRevision = await changeObj.currentRevision();
 			if (!currentRevision) {
 				failureCount++;
+				errors.push(
+					`Change ${change.number}: Could not get current revision`
+				);
 				continue;
 			}
 
-			const success = await api.setReview(
+			// Use the enhanced method with detailed error reporting
+			const result = await api.setReviewWithDetails(
 				change.changeID,
 				currentRevision.id,
 				{
@@ -292,16 +298,24 @@ class BatchReviewProvider implements Disposable {
 				}
 			);
 
-			if (success) {
+			if (result.success) {
 				successCount++;
 			} else {
 				failureCount++;
+				errors.push(`Change ${change.number}: ${result.error}`);
 			}
 		}
 
 		// Clear batch after submission
 		this._state.batchChanges = [];
 		await this._updateView();
+
+		// Show detailed error message if there were failures
+		if (errors.length > 0) {
+			void window.showErrorMessage(
+				`Failed to review ${failureCount} change(s):\n${errors.slice(0, 5).join('\n')}${errors.length > 5 ? `\n...and ${errors.length - 5} more` : ''}`
+			);
+		}
 
 		await this._panel.webview.postMessage({
 			type: 'batchVoteSuccess',
@@ -374,19 +388,29 @@ class BatchReviewProvider implements Disposable {
 
 		let successCount = 0;
 		let failureCount = 0;
+		const errors: string[] = [];
 
 		for (const change of this._state.batchChanges) {
-			const success = await api.submit(change.changeID);
-			if (success) {
+			// Use the enhanced method with detailed error reporting
+			const result = await api.submitWithDetails(change.changeID);
+			if (result.success) {
 				successCount++;
 			} else {
 				failureCount++;
+				errors.push(`Change ${change.number}: ${result.error}`);
 			}
 		}
 
-		// Clear batch after submission
+		// Clear batch after submission (only successful ones are merged, but clear all for UX)
 		this._state.batchChanges = [];
 		await this._updateView();
+
+		// Show detailed error message if there were failures
+		if (errors.length > 0) {
+			void window.showErrorMessage(
+				`Failed to submit ${failureCount} change(s):\n${errors.slice(0, 5).join('\n')}${errors.length > 5 ? `\n...and ${errors.length - 5} more` : ''}`
+			);
+		}
 
 		await this._panel.webview.postMessage({
 			type: 'batchVoteSuccess',
