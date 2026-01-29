@@ -12,8 +12,8 @@
  * - Request body size is limited to prevent memory issues
  */
 
-import * as http from 'http';
 import { BatchReviewChange } from '../../views/editor/batchReview/types';
+import * as http from 'http';
 
 // Maximum request body size (1MB should be plenty for change IDs)
 const MAX_BODY_SIZE = 1024 * 1024;
@@ -105,7 +105,9 @@ export function createBatchReviewApiServer(
 				bodySize += chunk.length;
 				if (bodySize > MAX_BODY_SIZE) {
 					res.writeHead(413);
-					res.end(JSON.stringify({ error: 'Request body too large' }));
+					res.end(
+						JSON.stringify({ error: 'Request body too large' })
+					);
 					req.destroy();
 					return;
 				}
@@ -176,10 +178,12 @@ export function createBatchReviewApiServer(
 		if (url === '/batch' && method === 'DELETE') {
 			callbacks.clearBatch();
 			res.writeHead(200);
-			res.end(JSON.stringify({
-				success: true,
-				batch: [],
-			}));
+			res.end(
+				JSON.stringify({
+					success: true,
+					batch: [],
+				})
+			);
 			return;
 		}
 
