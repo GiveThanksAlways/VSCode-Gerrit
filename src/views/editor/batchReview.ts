@@ -13,6 +13,7 @@ import {
 	GetPeopleMessage,
 	OpenFileDiffMessage,
 	RemoveFromBatchMessage,
+	SetFileViewModeMessage,
 	SubmitBatchVoteMessage,
 } from './batchReview/messaging';
 import {
@@ -47,6 +48,7 @@ class BatchReviewProvider implements Disposable {
 		yourTurnChanges: [],
 		batchChanges: [],
 		loading: false,
+		fileViewMode: 'tree',
 	};
 	private _apiServer: BatchReviewApiServer | null = null;
 
@@ -116,7 +118,15 @@ class BatchReviewProvider implements Disposable {
 		await this._updateView();
 
 		const changes = await this._getYourTurnChanges();
-		this._state.yourTurnChanges = changes;
+		
+		// Filter out changes that are already in the batch to avoid duplicates
+		const batchChangeIDs = new Set(
+			this._state.batchChanges.map((c) => c.changeID)
+		);
+		this._state.yourTurnChanges = changes.filter(
+			(change) => !batchChangeIDs.has(change.changeID)
+		);
+		
 		this._state.loading = false;
 		await this._updateView();
 	}
@@ -559,10 +569,9 @@ class BatchReviewProvider implements Disposable {
 			try {
 				const port = await this._apiServer.start();
 				await this._sendAutomationStatus(true, port);
-				void window.showInformationMessage(
-					`Batch Review API server started on http://127.0.0.1:${port}`
-				);
+				// No notification - status indicator in UI is sufficient
 			} catch (err) {
+				// Only show error notification, not success
 				void window.showErrorMessage(
 					`Failed to start Batch Review API server: ${err instanceof Error ? err.message : String(err)}`
 				);
@@ -579,9 +588,7 @@ class BatchReviewProvider implements Disposable {
 			try {
 				await this._apiServer.stop();
 				await this._sendAutomationStatus(false, null);
-				void window.showInformationMessage(
-					'Batch Review API server stopped'
-				);
+				// No notification - status indicator in UI is sufficient
 			} catch (err) {
 				void window.showErrorMessage(
 					`Failed to stop Batch Review API server: ${err instanceof Error ? err.message : String(err)}`
@@ -657,7 +664,15 @@ class BatchReviewProvider implements Disposable {
 			case 'submitBatch':
 				await this._handleSubmitBatch();
 				break;
+			case 'setFileViewMode':
+				this._handleSetFileViewMode(msg);
+				break;
 		}
+	}
+
+	private _handleSetFileViewMode(msg: SetFileViewModeMessage): void {
+		this._state.fileViewMode = msg.body.mode;
+		void this._updateView();
 	}
 
 	private async _updateView(): Promise<void> {
@@ -717,6 +732,9 @@ class BatchReviewProvider implements Disposable {
 				}
 			})
 		);
+
+		// Auto-start the API server when the panel opens
+		void this._handleStartAutomation();
 	}
 
 	// Extensible API for AI agents/automation (read/modify batch, but NOT submit)

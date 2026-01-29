@@ -3,6 +3,287 @@ import { BatchReviewState, BatchReviewPerson, BatchReviewLabel } from '../../../
 import { BatchReviewChange, BatchReviewFileInfo } from '../../../types';
 import { vscode } from '../lib/api';
 
+// Type for file tree structure
+interface FileTreeNode {
+	name: string;
+	path: string;
+	isFolder: boolean;
+	children?: FileTreeNode[];
+	file?: BatchReviewFileInfo;
+}
+
+// Build a tree structure from flat file list
+function buildFileTree(files: BatchReviewFileInfo[]): FileTreeNode[] {
+	const root: Record<string, FileTreeNode> = {};
+
+	for (const file of files) {
+		const parts = file.filePath.split('/');
+		let current = root;
+
+		for (let i = 0; i < parts.length; i++) {
+			const part = parts[i];
+			const isLast = i === parts.length - 1;
+			const path = parts.slice(0, i + 1).join('/');
+
+			if (isLast) {
+				current[part] = {
+					name: part,
+					path,
+					isFolder: false,
+					file,
+				};
+			} else {
+				if (!current[part]) {
+					current[part] = {
+						name: part,
+						path,
+						isFolder: true,
+						children: [],
+					};
+				}
+				// Move into the folder's children map
+				if (!current[part].children) {
+					current[part].children = [];
+				}
+				// Use a helper map for nested traversal
+				const childMap: Record<string, FileTreeNode> = {};
+				for (const child of current[part].children || []) {
+					childMap[child.name] = child;
+				}
+				current = childMap as unknown as Record<string, FileTreeNode>;
+			}
+		}
+	}
+
+	// Convert to array format recursively
+	function toArray(map: Record<string, FileTreeNode>): FileTreeNode[] {
+		return Object.values(map).sort((a, b) => {
+			// Folders first, then files
+			if (a.isFolder !== b.isFolder) return a.isFolder ? -1 : 1;
+			return a.name.localeCompare(b.name);
+		});
+	}
+
+	return toArray(root);
+}
+
+// Simpler tree builder that actually works
+function buildSimpleFileTree(files: BatchReviewFileInfo[]): FileTreeNode[] {
+	const folderMap = new Map<string, BatchReviewFileInfo[]>();
+
+	for (const file of files) {
+		const parts = file.filePath.split('/');
+		if (parts.length === 1) {
+			// Root level file
+			const key = '';
+			if (!folderMap.has(key)) folderMap.set(key, []);
+			folderMap.get(key)!.push(file);
+		} else {
+			// File in a folder - group by first folder
+			const folderPath = parts.slice(0, -1).join('/');
+			if (!folderMap.has(folderPath)) folderMap.set(folderPath, []);
+			folderMap.get(folderPath)!.push(file);
+		}
+	}
+
+	// Build tree nodes
+	const nodes: FileTreeNode[] = [];
+	const folders = new Map<string, FileTreeNode>();
+
+	// Create folder nodes
+	for (const [folderPath] of folderMap) {
+		if (folderPath === '') continue;
+		const parts = folderPath.split('/');
+		let currentPath = '';
+		for (const part of parts) {
+			currentPath = currentPath ? `${currentPath}/${part}` : part;
+			if (!folders.has(currentPath)) {
+				folders.set(currentPath, {
+					name: part,
+					path: currentPath,
+					isFolder: true,
+					children: [],
+				});
+			}
+		}
+	}
+
+	// Link folders together
+	for (const [path, node] of folders) {
+		const parts = path.split('/');
+		if (parts.length === 1) {
+			nodes.push(node);
+		} else {
+			const parentPath = parts.slice(0, -1).join('/');
+			const parent = folders.get(parentPath);
+			if (parent && parent.children) {
+				parent.children.push(node);
+			}
+		}
+	}
+
+	// Add files to their folders
+	for (const [folderPath, folderFiles] of folderMap) {
+		if (folderPath === '') {
+			// Root level files
+			for (const file of folderFiles) {
+				nodes.push({
+					name: file.filePath,
+					path: file.filePath,
+					isFolder: false,
+					file,
+				});
+			}
+		} else {
+			const folder = folders.get(folderPath);
+			if (folder && folder.children) {
+				for (const file of folderFiles) {
+					const fileName = file.filePath.split('/').pop() || file.filePath;
+					folder.children.push({
+						name: fileName,
+						path: file.filePath,
+						isFolder: false,
+						file,
+					});
+				}
+			}
+		}
+	}
+
+	// Sort nodes (folders first, then alphabetically)
+	const sortNodes = (nodeList: FileTreeNode[]): FileTreeNode[] => {
+		nodeList.sort((a, b) => {
+			if (a.isFolder !== b.isFolder) return a.isFolder ? -1 : 1;
+			return a.name.localeCompare(b.name);
+		});
+		for (const node of nodeList) {
+			if (node.children) {
+				sortNodes(node.children);
+			}
+		}
+		return nodeList;
+	};
+
+	return sortNodes(nodes);
+}
+
+interface FolderItemProps {
+	node: FileTreeNode;
+	changeID: string;
+	depth: number;
+}
+
+const FolderItem: VFC<FolderItemProps> = ({ node, changeID, depth }) => {
+	const [expanded, setExpanded] = useState(true);
+
+	if (!node.isFolder && node.file) {
+		// Render file
+		return (
+			<TreeFileItem
+				file={node.file}
+				changeID={changeID}
+				depth={depth}
+				displayName={node.name}
+			/>
+		);
+	}
+
+	// Render folder
+	return (
+		<div className="tree-folder">
+			<div
+				className="tree-folder-header"
+				style={{ paddingLeft: `${depth * 12}px` }}
+				onClick={() => setExpanded(!expanded)}
+			>
+				<span
+					className={`codicon ${
+						expanded ? 'codicon-chevron-down' : 'codicon-chevron-right'
+					}`}
+				></span>
+				<span className="codicon codicon-folder"></span>
+				<span className="folder-name">{node.name}</span>
+			</div>
+			{expanded && node.children && (
+				<div className="tree-folder-children">
+					{node.children.map((child) => (
+						<FolderItem
+							key={child.path}
+							node={child}
+							changeID={changeID}
+							depth={depth + 1}
+						/>
+					))}
+				</div>
+			)}
+		</div>
+	);
+};
+
+interface TreeFileItemProps {
+	file: BatchReviewFileInfo;
+	changeID: string;
+	depth: number;
+	displayName: string;
+}
+
+const TreeFileItem: VFC<TreeFileItemProps> = ({ file, changeID, depth, displayName }) => {
+	const handleFileClick = () => {
+		vscode.postMessage({
+			type: 'openFileDiff',
+			body: {
+				changeID,
+				filePath: file.filePath,
+			},
+		});
+	};
+
+	const handleKeyDown = (e: React.KeyboardEvent) => {
+		if (e.key === 'Enter' || e.key === ' ') {
+			e.preventDefault();
+			handleFileClick();
+		}
+	};
+
+	const getStatusIcon = (status: BatchReviewFileInfo['status']) => {
+		switch (status) {
+			case 'A':
+				return <span className="file-status file-status-added">A</span>;
+			case 'D':
+				return <span className="file-status file-status-deleted">D</span>;
+			case 'R':
+				return <span className="file-status file-status-renamed">R</span>;
+			case 'M':
+			default:
+				return <span className="file-status file-status-modified">M</span>;
+		}
+	};
+
+	return (
+		<div
+			className="file-item tree-file-item"
+			style={{ paddingLeft: `${depth * 12 + 16}px` }}
+			onClick={handleFileClick}
+			onKeyDown={handleKeyDown}
+			tabIndex={0}
+			role="button"
+			aria-label={`Open diff for ${file.filePath}`}
+		>
+			<span className="codicon codicon-file"></span>
+			{getStatusIcon(file.status)}
+			<span className="file-path">{displayName}</span>
+			<span className="file-stats">
+				{file.linesInserted > 0 && (
+					<span className="file-additions">+{file.linesInserted}</span>
+				)}
+				{file.linesDeleted > 0 && (
+					<span className="file-deletions">-{file.linesDeleted}</span>
+				)}
+			</span>
+		</div>
+	);
+};
+
 interface FileItemProps {
 	file: BatchReviewFileInfo;
 	changeID: string;
@@ -71,6 +352,7 @@ interface ExpandableChangeItemProps {
 	showScore?: boolean;
 	draggable?: boolean;
 	onDragStart?: (e: React.DragEvent, changeID: string) => void;
+	fileViewMode?: 'list' | 'tree';
 }
 
 const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
@@ -80,6 +362,7 @@ const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 	showScore = false,
 	draggable = false,
 	onDragStart,
+	fileViewMode = 'tree',
 }) => {
 	const [expanded, setExpanded] = useState(false);
 	const [loadingFiles, setLoadingFiles] = useState(false);
@@ -174,13 +457,26 @@ const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 							<span>Loading files...</span>
 						</div>
 					) : change.files && change.files.length > 0 ? (
-						change.files.map((file) => (
-							<FileItem
-								key={file.filePath}
-								file={file}
-								changeID={change.changeID}
-							/>
-						))
+						fileViewMode === 'tree' ? (
+							// Tree view - nested folders
+							buildSimpleFileTree(change.files).map((node) => (
+								<FolderItem
+									key={node.path}
+									node={node}
+									changeID={change.changeID}
+									depth={0}
+								/>
+							))
+						) : (
+							// List view - flat list
+							change.files.map((file) => (
+								<FileItem
+									key={file.filePath}
+									file={file}
+									changeID={change.changeID}
+								/>
+							))
+						)
 					) : (
 						<div className="files-empty">No files found</div>
 					)}
@@ -200,6 +496,8 @@ interface ChangeListProps {
 	listType: 'yourTurn' | 'batch';
 	onDragStart: (e: React.DragEvent, changeID: string, listType: 'yourTurn' | 'batch') => void;
 	onDrop: (e: React.DragEvent, targetListType: 'yourTurn' | 'batch') => void;
+	fileViewMode?: 'list' | 'tree';
+	onFileViewModeChange?: (mode: 'list' | 'tree') => void;
 }
 
 const ChangeList: VFC<ChangeListProps> = ({
@@ -212,6 +510,8 @@ const ChangeList: VFC<ChangeListProps> = ({
 	listType,
 	onDragStart,
 	onDrop,
+	fileViewMode = 'tree',
+	onFileViewModeChange,
 }) => {
 	const allSelected =
 		changes.length > 0 && changes.every((c) => selectedChanges.has(c.changeID));
@@ -246,16 +546,36 @@ const ChangeList: VFC<ChangeListProps> = ({
 		>
 			<div className="list-header">
 				<h2>{title}</h2>
-				{changes.length > 0 && (
-					<label className="checkbox-label">
-						<input
-							type="checkbox"
-							checked={allSelected}
-							onChange={(e) => onSelectAll(e.target.checked)}
-						/>
-						<span>Select All ({changes.length})</span>
-					</label>
-				)}
+				<div className="list-header-actions">
+					{onFileViewModeChange && (
+						<div className="view-mode-toggle" title="Toggle file view mode">
+							<button
+								className={`view-mode-btn ${fileViewMode === 'list' ? 'active' : ''}`}
+								onClick={() => onFileViewModeChange('list')}
+								title="View as List"
+							>
+								<span className="codicon codicon-list-flat"></span>
+							</button>
+							<button
+								className={`view-mode-btn ${fileViewMode === 'tree' ? 'active' : ''}`}
+								onClick={() => onFileViewModeChange('tree')}
+								title="View as Tree"
+							>
+								<span className="codicon codicon-list-tree"></span>
+							</button>
+						</div>
+					)}
+					{changes.length > 0 && (
+						<label className="checkbox-label">
+							<input
+								type="checkbox"
+								checked={allSelected}
+								onChange={(e) => onSelectAll(e.target.checked)}
+							/>
+							<span>Select All ({changes.length})</span>
+						</label>
+					)}
+				</div>
 			</div>
 			<div className="changes-container">
 				{changes.length === 0 ? (
@@ -272,6 +592,7 @@ const ChangeList: VFC<ChangeListProps> = ({
 							showScore={showScores}
 							draggable={true}
 							onDragStart={handleItemDragStart}
+							fileViewMode={fileViewMode}
 						/>
 					))
 				)}
@@ -520,6 +841,13 @@ export const BatchReviewPane: VFC = () => {
 		setSelectedBatch(new Set());
 	};
 
+	const handleFileViewModeChange = (mode: 'list' | 'tree') => {
+		vscode.postMessage({
+			type: 'setFileViewMode',
+			body: { mode },
+		});
+	};
+
 	const handleLabelChange = (name: string, value: number) => {
 		setLabelValues((prev) => ({ ...prev, [name]: value }));
 	};
@@ -567,14 +895,6 @@ export const BatchReviewPane: VFC = () => {
 
 	const handleRefresh = () => {
 		vscode.postMessage({ type: 'getYourTurnChanges' });
-	};
-
-	const handleStartAutomation = () => {
-		vscode.postMessage({ type: 'startAutomation' });
-	};
-
-	const handleStopAutomation = () => {
-		vscode.postMessage({ type: 'stopAutomation' });
 	};
 
 	// Drag and Drop handlers
@@ -666,37 +986,17 @@ export const BatchReviewPane: VFC = () => {
 						<span className="codicon codicon-refresh"></span>
 						Refresh
 					</button>
-					{automationStatus.running ? (
-						<button
-							className="automation-button automation-stop"
-							onClick={handleStopAutomation}
-							title="Stop local API server"
+					{automationStatus.running && (
+						<div
+							className="api-status api-status-running"
+							title={`API server running on port ${automationStatus.port}`}
 						>
-							<span className="codicon codicon-debug-stop"></span>
-							Stop API (:{automationStatus.port})
-						</button>
-					) : (
-						<button
-							className="automation-button automation-start"
-							onClick={handleStartAutomation}
-							title="Start local API server for AI/script automation"
-						>
-							<span className="codicon codicon-rocket"></span>
-							AI Automate Batch List
-						</button>
+							<span className="codicon codicon-check"></span>
+							<span className="api-port">:{automationStatus.port}</span>
+						</div>
 					)}
 				</div>
 			</div>
-
-			{automationStatus.running && (
-				<div className="automation-status">
-					<span className="codicon codicon-broadcast"></span>
-					<span>
-						Local API running at{' '}
-						<code>http://127.0.0.1:{automationStatus.port}</code>
-					</span>
-				</div>
-			)}
 
 			<div className="lists-container">
 				<div className="your-turn-section">
@@ -709,6 +1009,8 @@ export const BatchReviewPane: VFC = () => {
 						listType="yourTurn"
 						onDragStart={handleDragStart}
 						onDrop={handleDrop}
+						fileViewMode={state.fileViewMode ?? 'tree'}
+						onFileViewModeChange={handleFileViewModeChange}
 					/>
 					<div className="action-buttons">
 						<button
@@ -733,6 +1035,8 @@ export const BatchReviewPane: VFC = () => {
 						listType="batch"
 						onDragStart={handleDragStart}
 						onDrop={handleDrop}
+						fileViewMode={state.fileViewMode ?? 'tree'}
+						onFileViewModeChange={handleFileViewModeChange}
 					/>
 					<div className="batch-actions">
 						<div className="action-buttons">

@@ -31,4 +31,6 @@ export interface BatchReviewState {
 	suggestedCC?: BatchReviewPerson[];
 	/** Available labels (e.g., Code-Review, Verified) with their possible values */
 	labels?: BatchReviewLabel[];
+	/** File view mode: 'list' for flat list, 'tree' for nested tree */
+	fileViewMode?: 'list' | 'tree';
 }

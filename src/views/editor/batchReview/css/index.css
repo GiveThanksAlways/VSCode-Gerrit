@@ -60,6 +60,31 @@ body {
 	background-color: var(--vscode-button-secondaryHoverBackground);
 }
 
+/* API Status Indicator */
+.api-status {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 10px;
+	border-radius: 12px;
+	font-size: 12px;
+	font-weight: 500;
+}
+
+.api-status-running {
+	background-color: rgba(35, 134, 54, 0.2);
+	color: #3fb950;
+}
+
+.api-status-running .codicon {
+	font-size: 14px;
+}
+
+.api-port {
+	font-family: var(--vscode-editor-font-family), monospace;
+}
+
+/* Legacy automation button styles - kept for reference */
 .automation-button {
 	display: flex;
 	align-items: center;
@@ -792,4 +817,77 @@ button:disabled {
 .button-send:disabled {
 	opacity: 0.5;
 	cursor: not-allowed;
+}
+
+/* View Mode Toggle */
+.list-header-actions {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.view-mode-toggle {
+	display: flex;
+	gap: 2px;
+	background-color: var(--vscode-input-background);
+	border-radius: 4px;
+	padding: 2px;
+}
+
+.view-mode-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 4px 6px;
+	border: none;
+	background: transparent;
+	color: var(--vscode-descriptionForeground);
+	cursor: pointer;
+	border-radius: 3px;
+}
+
+.view-mode-btn:hover {
+	background-color: var(--vscode-list-hoverBackground);
+	color: var(--vscode-foreground);
+}
+
+.view-mode-btn.active {
+	background-color: var(--vscode-button-background);
+	color: var(--vscode-button-foreground);
+}
+
+/* File Tree View */
+.tree-folder {
+	display: flex;
+	flex-direction: column;
+}
+
+.tree-folder-header {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding: 4px 8px;
+	cursor: pointer;
+	font-size: 13px;
+}
+
+.tree-folder-header:hover {
+	background-color: var(--vscode-list-hoverBackground);
+}
+
+.tree-folder-header .codicon {
+	font-size: 14px;
+}
+
+.folder-name {
+	color: var(--vscode-foreground);
+}
+
+.tree-folder-children {
+	display: flex;
+	flex-direction: column;
+}
+
+.tree-file-item {
+	padding-left: 16px;
 }

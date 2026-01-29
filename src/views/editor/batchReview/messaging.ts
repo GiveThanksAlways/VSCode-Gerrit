@@ -75,6 +75,13 @@ export interface SubmitBatchMessage {
 	type: 'submitBatch';
 }
 
+export interface SetFileViewModeMessage {
+	type: 'setFileViewMode';
+	body: {
+		mode: 'list' | 'tree';
+	};
+}
+
 /**
  * Batch Review `postMessage` message types and their bodies.
  */
@@ -103,6 +110,7 @@ export type BatchReviewWebviewMessage =
 	| OpenFileDiffMessage
 	| GetPeopleMessage
 	| SubmitBatchMessage
+	| SetFileViewModeMessage
 	| {
 			type: 'batchVoteSuccess';
 			body: {
