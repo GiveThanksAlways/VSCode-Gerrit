@@ -208,6 +208,36 @@ body {
 	background-color: var(--vscode-list-activeSelectionBackground);
 }
 
+/* Open in Gerrit button - show on hover and focus-within */
+.open-online-button {
+	display: none;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	background: transparent;
+	border: none;
+	cursor: pointer;
+	border-radius: 3px;
+	flex-shrink: 0;
+	margin-right: 8px;
+}
+
+.open-online-button:hover {
+	background-color: var(--vscode-toolbar-hoverBackground);
+}
+
+.open-online-button .codicon {
+	font-size: 14px;
+	color: var(--vscode-foreground);
+}
+
+.change-item:hover .open-online-button,
+.change-item:focus-within .open-online-button {
+	display: flex;
+}
+
 .change-checkbox {
 	display: flex;
 	align-items: flex-start;

@@ -82,6 +82,15 @@ export interface SetFileViewModeMessage {
 	};
 }
 
+export interface OpenChangeOnlineMessage {
+	type: 'openChangeOnline';
+	body: {
+		changeID: string;
+		project: string;
+		number: number;
+	};
+}
+
 /**
  * Batch Review `postMessage` message types and their bodies.
  */
@@ -111,6 +120,7 @@ export type BatchReviewWebviewMessage =
 	| GetPeopleMessage
 	| SubmitBatchMessage
 	| SetFileViewModeMessage
+	| OpenChangeOnlineMessage
 	| {
 			type: 'batchVoteSuccess';
 			body: {

@@ -448,6 +448,23 @@ const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 						</div>
 					</div>
 				</label>
+				<button
+					className="open-online-button"
+					onClick={(e) => {
+						e.stopPropagation();
+						vscode.postMessage({
+							type: 'openChangeOnline',
+							body: {
+								changeID: change.changeID,
+								project: change.project,
+								number: change.number,
+							},
+						});
+					}}
+					title="Open in Gerrit"
+				>
+					<span className="codicon codicon-globe"></span>
+				</button>
 			</div>
 			{expanded && (
 				<div className="files-container">
@@ -673,6 +690,12 @@ const PeoplePicker: VFC<PeoplePickerProps> = ({
 		onSearch(value);
 	};
 
+	const handleFocus = () => {
+		setIsOpen(true);
+		// Trigger search with empty query to load suggestions immediately
+		onSearch(query);
+	};
+
 	const handleSelect = (person: BatchReviewPerson) => {
 		if (!person.locked && !people.some((p) => p.id === person.id)) {
 			onChange([...people, person]);
@@ -712,7 +735,7 @@ const PeoplePicker: VFC<PeoplePickerProps> = ({
 					type="text"
 					value={query}
 					onChange={handleInputChange}
-					onFocus={() => setIsOpen(true)}
+					onFocus={handleFocus}
 					onBlur={() => setTimeout(() => setIsOpen(false), 200)}
 					placeholder={placeholder}
 					className="people-input"

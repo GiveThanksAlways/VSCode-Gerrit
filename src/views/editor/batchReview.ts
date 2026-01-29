@@ -1,6 +1,7 @@
 import {
 	commands as vscodeCommands,
 	Disposable,
+	env,
 	ExtensionContext,
 	Uri,
 	ViewColumn,
@@ -11,6 +12,7 @@ import {
 	BatchReviewWebviewMessage,
 	GetFilesForChangeMessage,
 	GetPeopleMessage,
+	OpenChangeOnlineMessage,
 	OpenFileDiffMessage,
 	RemoveFromBatchMessage,
 	SetFileViewModeMessage,
@@ -667,12 +669,33 @@ class BatchReviewProvider implements Disposable {
 			case 'setFileViewMode':
 				this._handleSetFileViewMode(msg);
 				break;
+			case 'openChangeOnline':
+				await this._handleOpenChangeOnline(msg);
+				break;
 		}
 	}
 
 	private _handleSetFileViewMode(msg: SetFileViewModeMessage): void {
 		this._state.fileViewMode = msg.body.mode;
 		void this._updateView();
+	}
+
+	private async _handleOpenChangeOnline(
+		msg: OpenChangeOnlineMessage
+	): Promise<void> {
+		const api = await getAPI();
+		if (!api) {
+			void window.showErrorMessage('Failed to connect to Gerrit API');
+			return;
+		}
+		const url = api.getPublicUrl(
+			`c/${msg.body.project}/+/${msg.body.number}`
+		);
+		if (!url) {
+			void window.showErrorMessage('Could not determine Gerrit URL');
+			return;
+		}
+		await env.openExternal(Uri.parse(url));
 	}
 
 	private async _updateView(): Promise<void> {
