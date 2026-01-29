@@ -521,7 +521,7 @@ interface ChangeListProps {
 	selectedChanges: Set<string>;
 	onSelectionChange: (changeID: string, selected: boolean) => void;
 	onSelectAll: (selected: boolean) => void;
-	onRangeSelect: (fromIndex: number, toIndex: number) => void;
+	onMultiSelect: (changeIDs: string[], mode: 'add' | 'replace' | 'toggle') => void;
 	title: string;
 	showScores?: boolean;
 	listType: 'yourTurn' | 'batch';
@@ -536,7 +536,7 @@ const ChangeList: VFC<ChangeListProps> = ({
 	selectedChanges,
 	onSelectionChange,
 	onSelectAll,
-	onRangeSelect,
+	onMultiSelect,
 	title,
 	showScores = false,
 	listType,
@@ -548,7 +548,15 @@ const ChangeList: VFC<ChangeListProps> = ({
 	const allSelected =
 		changes.length > 0 && changes.every((c) => selectedChanges.has(c.changeID));
 	const [isDragOver, setIsDragOver] = useState(false);
-	const [lastClickedIndex, setLastClickedIndex] = useState<number | null>(null);
+	// Anchor index: the starting point for shift-click range selection
+	const [anchorIndex, setAnchorIndex] = useState<number | null>(null);
+
+	// Reset anchor when changes array changes (e.g., after moving items)
+	useEffect(() => {
+		if (anchorIndex !== null && anchorIndex >= changes.length) {
+			setAnchorIndex(null);
+		}
+	}, [changes.length, anchorIndex]);
 
 	const handleDragOver = (e: React.DragEvent) => {
 		e.preventDefault();
@@ -570,19 +578,32 @@ const ChangeList: VFC<ChangeListProps> = ({
 		onDragStart(e, changeID, listType);
 	};
 
+	/**
+	 * Robust multi-select state machine:
+	 * - Shift+Click: Select range from anchor to current (add to existing selection)
+	 * - Ctrl/Cmd+Click: Toggle individual item, set new anchor
+	 * - Plain Click: Select single item (via checkbox handler), set anchor
+	 */
 	const handleItemClick = (changeID: string, index: number, e: React.MouseEvent) => {
-		if (e.shiftKey && lastClickedIndex !== null) {
-			// Shift+Click: select range
-			const start = Math.min(lastClickedIndex, index);
-			const end = Math.max(lastClickedIndex, index);
-			onRangeSelect(start, end);
+		e.stopPropagation();
+		
+		if (e.shiftKey) {
+			// Shift+Click: Select range from anchor (or 0 if no anchor) to current index
+			const startIndex = anchorIndex ?? 0;
+			const fromIdx = Math.min(startIndex, index);
+			const toIdx = Math.max(startIndex, index);
+			const rangeIDs = changes.slice(fromIdx, toIdx + 1).map(c => c.changeID);
+			
+			// Add range to current selection (don't replace)
+			onMultiSelect(rangeIDs, 'add');
+			// Don't update anchor on shift-click - keep it stable for chaining
 		} else if (e.ctrlKey || e.metaKey) {
-			// Ctrl/Cmd+Click: toggle individual
+			// Ctrl/Cmd+Click: Toggle this item and set new anchor
 			onSelectionChange(changeID, !selectedChanges.has(changeID));
-			setLastClickedIndex(index);
+			setAnchorIndex(index);
 		} else {
-			// Normal click: just update last clicked index (checkbox handles toggle)
-			setLastClickedIndex(index);
+			// Plain click: Set anchor for future shift-clicks
+			setAnchorIndex(index);
 		}
 	};
 
@@ -914,24 +935,60 @@ export const BatchReviewPane: VFC = () => {
 		setSelectedBatch(new Set());
 	};
 
-	const handleYourTurnRangeSelect = (fromIndex: number, toIndex: number) => {
-		const newSelection = new Set(selectedYourTurn);
-		for (let i = fromIndex; i <= toIndex; i++) {
-			if (state.yourTurnChanges[i]) {
-				newSelection.add(state.yourTurnChanges[i].changeID);
+	/**
+	 * Unified multi-select handler for Your Turn list
+	 * @param changeIDs - Array of change IDs to select
+	 * @param mode - 'add' adds to selection, 'replace' replaces selection, 'toggle' toggles each
+	 */
+	const handleYourTurnMultiSelect = (changeIDs: string[], mode: 'add' | 'replace' | 'toggle') => {
+		setSelectedYourTurn(prev => {
+			if (mode === 'replace') {
+				return new Set(changeIDs);
+			} else if (mode === 'add') {
+				const newSet = new Set(prev);
+				changeIDs.forEach(id => newSet.add(id));
+				return newSet;
+			} else {
+				// toggle
+				const newSet = new Set(prev);
+				changeIDs.forEach(id => {
+					if (newSet.has(id)) {
+						newSet.delete(id);
+					} else {
+						newSet.add(id);
+					}
+				});
+				return newSet;
 			}
-		}
-		setSelectedYourTurn(newSelection);
+		});
 	};
 
-	const handleBatchRangeSelect = (fromIndex: number, toIndex: number) => {
-		const newSelection = new Set(selectedBatch);
-		for (let i = fromIndex; i <= toIndex; i++) {
-			if (state.batchChanges[i]) {
-				newSelection.add(state.batchChanges[i].changeID);
+	/**
+	 * Unified multi-select handler for Batch list
+	 * @param changeIDs - Array of change IDs to select
+	 * @param mode - 'add' adds to selection, 'replace' replaces selection, 'toggle' toggles each
+	 */
+	const handleBatchMultiSelect = (changeIDs: string[], mode: 'add' | 'replace' | 'toggle') => {
+		setSelectedBatch(prev => {
+			if (mode === 'replace') {
+				return new Set(changeIDs);
+			} else if (mode === 'add') {
+				const newSet = new Set(prev);
+				changeIDs.forEach(id => newSet.add(id));
+				return newSet;
+			} else {
+				// toggle
+				const newSet = new Set(prev);
+				changeIDs.forEach(id => {
+					if (newSet.has(id)) {
+						newSet.delete(id);
+					} else {
+						newSet.add(id);
+					}
+				});
+				return newSet;
 			}
-		}
-		setSelectedBatch(newSelection);
+		});
 	};
 
 	const handleFileViewModeChange = (mode: 'list' | 'tree') => {
@@ -1098,7 +1155,7 @@ export const BatchReviewPane: VFC = () => {
 						selectedChanges={selectedYourTurn}
 						onSelectionChange={handleYourTurnSelection}
 						onSelectAll={handleYourTurnSelectAll}
-						onRangeSelect={handleYourTurnRangeSelect}
+						onMultiSelect={handleYourTurnMultiSelect}
 						title="Your Turn"
 						listType="yourTurn"
 						onDragStart={handleDragStart}
@@ -1124,7 +1181,7 @@ export const BatchReviewPane: VFC = () => {
 						selectedChanges={selectedBatch}
 						onSelectionChange={handleBatchSelection}
 						onSelectAll={handleBatchSelectAll}
-						onRangeSelect={handleBatchRangeSelect}
+						onMultiSelect={handleBatchMultiSelect}
 						title="Batch"
 						showScores={true}
 						listType="batch"
