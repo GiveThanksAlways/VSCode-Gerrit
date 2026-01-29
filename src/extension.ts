@@ -7,6 +7,7 @@ import {
 	testEnableStreamEvents,
 } from './lib/stream-events/stream-events';
 import { getReviewedStatusDecorationProvider } from './providers/reviewedStatusDecorationProvider';
+import { getOrCreateBatchReviewButtonProvider } from './views/activityBar/batchReviewButton';
 import { FileModificationStatusProvider } from './providers/fileModificationStatusProvider';
 import { showQuickCheckoutStatusBarIcons } from './views/statusBar/quickCheckoutStatusBar';
 import { getOrCreateQuickCheckoutTreeProvider } from './views/activityBar/quickCheckout';
@@ -21,7 +22,6 @@ import { getCommentDecorationProvider } from './providers/commentDecorationProvi
 import { SearchResultsTreeProvider } from './views/activityBar/searchResults';
 import { CommentManager, DocumentManager } from './providers/commentProvider';
 import { getOrCreateReviewWebviewProvider } from './views/activityBar/review';
-import { getOrCreateBatchReviewButtonProvider } from './views/activityBar/batchReviewButton';
 import { getOrCreateChangesTreeProvider } from './views/activityBar/changes';
 import { FileProvider, GERRIT_FILE_SCHEME } from './providers/fileProvider';
 import { getConfiguration, initConfigListener } from './lib/vscode/config';

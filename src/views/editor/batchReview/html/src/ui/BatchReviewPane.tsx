@@ -1,5 +1,9 @@
+import {
+	BatchReviewState,
+	BatchReviewPerson,
+	BatchReviewLabel,
+} from '../../../state';
 import React, { VFC, useState, useEffect, useCallback, useMemo } from 'react';
-import { BatchReviewState, BatchReviewPerson, BatchReviewLabel } from '../../../state';
 import { BatchReviewChange, BatchReviewFileInfo } from '../../../types';
 import { vscode } from '../lib/api';
 
@@ -138,7 +142,8 @@ function buildSimpleFileTree(files: BatchReviewFileInfo[]): FileTreeNode[] {
 			const folder = folders.get(folderPath);
 			if (folder && folder.children) {
 				for (const file of folderFiles) {
-					const fileName = file.filePath.split('/').pop() || file.filePath;
+					const fileName =
+						file.filePath.split('/').pop() || file.filePath;
 					folder.children.push({
 						name: fileName,
 						path: file.filePath,
@@ -198,7 +203,9 @@ const FolderItem: VFC<FolderItemProps> = ({ node, changeID, depth }) => {
 			>
 				<span
 					className={`codicon ${
-						expanded ? 'codicon-chevron-down' : 'codicon-chevron-right'
+						expanded
+							? 'codicon-chevron-down'
+							: 'codicon-chevron-right'
 					}`}
 				></span>
 				<span className="codicon codicon-folder"></span>
@@ -227,7 +234,12 @@ interface TreeFileItemProps {
 	displayName: string;
 }
 
-const TreeFileItem: VFC<TreeFileItemProps> = ({ file, changeID, depth, displayName }) => {
+const TreeFileItem: VFC<TreeFileItemProps> = ({
+	file,
+	changeID,
+	depth,
+	displayName,
+}) => {
 	const handleFileClick = () => {
 		vscode.postMessage({
 			type: 'openFileDiff',
@@ -250,12 +262,18 @@ const TreeFileItem: VFC<TreeFileItemProps> = ({ file, changeID, depth, displayNa
 			case 'A':
 				return <span className="file-status file-status-added">A</span>;
 			case 'D':
-				return <span className="file-status file-status-deleted">D</span>;
+				return (
+					<span className="file-status file-status-deleted">D</span>
+				);
 			case 'R':
-				return <span className="file-status file-status-renamed">R</span>;
+				return (
+					<span className="file-status file-status-renamed">R</span>
+				);
 			case 'M':
 			default:
-				return <span className="file-status file-status-modified">M</span>;
+				return (
+					<span className="file-status file-status-modified">M</span>
+				);
 		}
 	};
 
@@ -274,7 +292,9 @@ const TreeFileItem: VFC<TreeFileItemProps> = ({ file, changeID, depth, displayNa
 			<span className="file-path">{displayName}</span>
 			<span className="file-stats">
 				{file.linesInserted > 0 && (
-					<span className="file-additions">+{file.linesInserted}</span>
+					<span className="file-additions">
+						+{file.linesInserted}
+					</span>
 				)}
 				{file.linesDeleted > 0 && (
 					<span className="file-deletions">-{file.linesDeleted}</span>
@@ -312,12 +332,18 @@ const FileItem: VFC<FileItemProps> = ({ file, changeID }) => {
 			case 'A':
 				return <span className="file-status file-status-added">A</span>;
 			case 'D':
-				return <span className="file-status file-status-deleted">D</span>;
+				return (
+					<span className="file-status file-status-deleted">D</span>
+				);
 			case 'R':
-				return <span className="file-status file-status-renamed">R</span>;
+				return (
+					<span className="file-status file-status-renamed">R</span>
+				);
 			case 'M':
 			default:
-				return <span className="file-status file-status-modified">M</span>;
+				return (
+					<span className="file-status file-status-modified">M</span>
+				);
 		}
 	};
 
@@ -335,7 +361,9 @@ const FileItem: VFC<FileItemProps> = ({ file, changeID }) => {
 			<span className="file-path">{file.filePath}</span>
 			<span className="file-stats">
 				{file.linesInserted > 0 && (
-					<span className="file-additions">+{file.linesInserted}</span>
+					<span className="file-additions">
+						+{file.linesInserted}
+					</span>
 				)}
 				{file.linesDeleted > 0 && (
 					<span className="file-deletions">-{file.linesDeleted}</span>
@@ -354,7 +382,11 @@ interface ExpandableChangeItemProps {
 	onDragStart?: (e: React.DragEvent, changeID: string) => void;
 	fileViewMode?: 'list' | 'tree';
 	index: number;
-	onItemClick?: (changeID: string, index: number, e: React.MouseEvent) => void;
+	onItemClick?: (
+		changeID: string,
+		index: number,
+		e: React.MouseEvent
+	) => void;
 }
 
 const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
@@ -426,7 +458,9 @@ const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 				>
 					<span
 						className={`codicon ${
-							expanded ? 'codicon-chevron-down' : 'codicon-chevron-right'
+							expanded
+								? 'codicon-chevron-down'
+								: 'codicon-chevron-right'
 						}`}
 					></span>
 				</button>
@@ -440,8 +474,12 @@ const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 					/>
 					<div className="change-info">
 						<div className="change-header">
-							<span className="change-number">#{change.number}</span>
-							<span className="change-subject">{change.subject}</span>
+							<span className="change-number">
+								#{change.number}
+							</span>
+							<span className="change-subject">
+								{change.subject}
+							</span>
 							{showScore && change.score !== undefined && (
 								<span
 									className={`change-score score-${Math.min(
@@ -455,9 +493,15 @@ const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 							)}
 						</div>
 						<div className="change-details">
-							<span className="change-project">{change.project}</span>
-							<span className="change-branch">{change.branch}</span>
-							<span className="change-owner">{change.owner.name}</span>
+							<span className="change-project">
+								{change.project}
+							</span>
+							<span className="change-branch">
+								{change.branch}
+							</span>
+							<span className="change-owner">
+								{change.owner.name}
+							</span>
 						</div>
 					</div>
 				</label>
@@ -525,7 +569,11 @@ interface ChangeListProps {
 	title: string;
 	showScores?: boolean;
 	listType: 'yourTurn' | 'batch';
-	onDragStart: (e: React.DragEvent, changeID: string, listType: 'yourTurn' | 'batch') => void;
+	onDragStart: (
+		e: React.DragEvent,
+		changeID: string,
+		listType: 'yourTurn' | 'batch'
+	) => void;
 	onDrop: (e: React.DragEvent, targetListType: 'yourTurn' | 'batch') => void;
 	fileViewMode?: 'list' | 'tree';
 	onFileViewModeChange?: (mode: 'list' | 'tree') => void;
@@ -546,7 +594,8 @@ const ChangeList: VFC<ChangeListProps> = ({
 	onFileViewModeChange,
 }) => {
 	const allSelected =
-		changes.length > 0 && changes.every((c) => selectedChanges.has(c.changeID));
+		changes.length > 0 &&
+		changes.every((c) => selectedChanges.has(c.changeID));
 	const [isDragOver, setIsDragOver] = useState(false);
 	// Anchor index: the starting point for shift-click range selection
 	const [anchorIndex, setAnchorIndex] = useState<number | null>(null);
@@ -556,10 +605,10 @@ const ChangeList: VFC<ChangeListProps> = ({
 	// Reset anchor when changes array is modified (items added, removed, or reordered)
 	useEffect(() => {
 		const prevChanges = prevChangesRef.current;
-		const changesModified = 
+		const changesModified =
 			changes.length !== prevChanges.length ||
 			changes.some((c, i) => prevChanges[i]?.changeID !== c.changeID);
-		
+
 		if (changesModified) {
 			setAnchorIndex(null);
 		}
@@ -592,16 +641,22 @@ const ChangeList: VFC<ChangeListProps> = ({
 	 * - Ctrl/Cmd+Click: Toggle individual item, set new anchor
 	 * - Plain Click: Select single item (via checkbox handler), set anchor
 	 */
-	const handleItemClick = (changeID: string, index: number, e: React.MouseEvent) => {
+	const handleItemClick = (
+		changeID: string,
+		index: number,
+		e: React.MouseEvent
+	) => {
 		e.stopPropagation();
-		
+
 		if (e.shiftKey) {
 			// Shift+Click: Select range from anchor (or 0 if no anchor) to current index
 			const startIndex = anchorIndex ?? 0;
 			const fromIdx = Math.min(startIndex, index);
 			const toIdx = Math.max(startIndex, index);
-			const rangeIDs = changes.slice(fromIdx, toIdx + 1).map(c => c.changeID);
-			
+			const rangeIDs = changes
+				.slice(fromIdx, toIdx + 1)
+				.map((c) => c.changeID);
+
 			// Add range to current selection (don't replace)
 			onMultiSelect(rangeIDs, 'add');
 			// Don't update anchor on shift-click - keep it stable for chaining
@@ -626,7 +681,10 @@ const ChangeList: VFC<ChangeListProps> = ({
 				<h2>{title}</h2>
 				<div className="list-header-actions">
 					{onFileViewModeChange && (
-						<div className="view-mode-toggle" title="Toggle file view mode">
+						<div
+							className="view-mode-toggle"
+							title="Toggle file view mode"
+						>
 							<button
 								className={`view-mode-btn ${fileViewMode === 'list' ? 'active' : ''}`}
 								onClick={() => onFileViewModeChange('list')}
@@ -750,7 +808,10 @@ const PeoplePicker: VFC<PeoplePickerProps> = ({
 	// Close dropdown when clicking outside
 	useEffect(() => {
 		const handleClickOutside = (event: MouseEvent) => {
-			if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+			if (
+				containerRef.current &&
+				!containerRef.current.contains(event.target as Node)
+			) {
 				setIsOpen(false);
 			}
 		};
@@ -798,7 +859,11 @@ const PeoplePicker: VFC<PeoplePickerProps> = ({
 			<div className="picker-input-container">
 				<div className="selected-people">
 					{people.map((person) => (
-						<span key={person.id} className="person-chip" title={person.name}>
+						<span
+							key={person.id}
+							className="person-chip"
+							title={person.name}
+						>
 							{person.shortName}
 							{!person.locked && (
 								<button
@@ -913,7 +978,9 @@ export const BatchReviewPane: VFC = () => {
 
 	const handleBatchSelectAll = (selected: boolean) => {
 		if (selected) {
-			setSelectedBatch(new Set(state.batchChanges.map((c) => c.changeID)));
+			setSelectedBatch(
+				new Set(state.batchChanges.map((c) => c.changeID))
+			);
 		} else {
 			setSelectedBatch(new Set());
 		}
@@ -956,16 +1023,22 @@ export const BatchReviewPane: VFC = () => {
 		}
 		// mode === 'add'
 		const newSet = new Set(prev);
-		changeIDs.forEach(id => newSet.add(id));
+		changeIDs.forEach((id) => newSet.add(id));
 		return newSet;
 	};
 
-	const handleYourTurnMultiSelect = (changeIDs: string[], mode: 'add' | 'replace') => {
-		setSelectedYourTurn(prev => applyMultiSelect(prev, changeIDs, mode));
+	const handleYourTurnMultiSelect = (
+		changeIDs: string[],
+		mode: 'add' | 'replace'
+	) => {
+		setSelectedYourTurn((prev) => applyMultiSelect(prev, changeIDs, mode));
 	};
 
-	const handleBatchMultiSelect = (changeIDs: string[], mode: 'add' | 'replace') => {
-		setSelectedBatch(prev => applyMultiSelect(prev, changeIDs, mode));
+	const handleBatchMultiSelect = (
+		changeIDs: string[],
+		mode: 'add' | 'replace'
+	) => {
+		setSelectedBatch((prev) => applyMultiSelect(prev, changeIDs, mode));
 	};
 
 	const handleFileViewModeChange = (mode: 'list' | 'tree') => {
@@ -1119,7 +1192,9 @@ export const BatchReviewPane: VFC = () => {
 							title={`API server running on port ${automationStatus.port}`}
 						>
 							<span className="codicon codicon-check"></span>
-							<span className="api-port">:{automationStatus.port}</span>
+							<span className="api-port">
+								:{automationStatus.port}
+							</span>
 						</div>
 					)}
 				</div>
@@ -1211,7 +1286,9 @@ export const BatchReviewPane: VFC = () => {
 									className="vote-message"
 									placeholder="Say something nice..."
 									value={voteMessage}
-									onChange={(e) => setVoteMessage(e.target.value)}
+									onChange={(e) =>
+										setVoteMessage(e.target.value)
+									}
 									rows={3}
 								/>
 							</div>
@@ -1222,7 +1299,9 @@ export const BatchReviewPane: VFC = () => {
 									<input
 										type="checkbox"
 										checked={resolved}
-										onChange={(e) => setResolved(e.target.checked)}
+										onChange={(e) =>
+											setResolved(e.target.checked)
+										}
 									/>
 									<span>Resolved</span>
 								</label>

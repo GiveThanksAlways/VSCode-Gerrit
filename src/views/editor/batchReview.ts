@@ -1,13 +1,4 @@
 import {
-	commands as vscodeCommands,
-	Disposable,
-	env,
-	ExtensionContext,
-	Uri,
-	ViewColumn,
-	window,
-} from 'vscode';
-import {
 	AddToBatchMessage,
 	BatchReviewWebviewMessage,
 	GetFilesForChangeMessage,
@@ -19,29 +10,38 @@ import {
 	SubmitBatchVoteMessage,
 } from './batchReview/messaging';
 import {
+	commands as vscodeCommands,
+	Disposable,
+	env,
+	ExtensionContext,
+	Uri,
+	ViewColumn,
+	window,
+} from 'vscode';
+import {
+	createBatchReviewApiServer,
+	BatchReviewApiServer,
+	ScoreMap,
+} from '../../lib/batchReviewApi/server';
+import {
 	BatchReviewChange,
 	BatchReviewFileInfo,
 	TypedWebviewPanel,
 } from './batchReview/types';
-import { BatchReviewState, BatchReviewPerson } from './batchReview/state';
-import { GerritChange } from '../../lib/gerrit/gerritAPI/gerritChange';
-import { GerritAPIWith } from '../../lib/gerrit/gerritAPI/api';
-import { Repository } from '../../types/vscode-extension-git';
-import { getAPI } from '../../lib/gerrit/gerritAPI';
-import { getHTML } from './batchReview/html';
 import {
 	DefaultChangeFilter,
 	GerritChangeFilter,
 } from '../../lib/gerrit/gerritAPI/filters';
 import { FileTreeView } from '../activityBar/changes/changeTreeView/fileTreeView';
 import { GerritRevisionFileStatus } from '../../lib/gerrit/gerritAPI/types';
-import {
-	createBatchReviewApiServer,
-	BatchReviewApiServer,
-	ScoreMap,
-} from '../../lib/batchReviewApi/server';
-import { GerritUser } from '../../lib/gerrit/gerritAPI/gerritUser';
+import { BatchReviewState, BatchReviewPerson } from './batchReview/state';
+import { GerritChange } from '../../lib/gerrit/gerritAPI/gerritChange';
 import { GerritGroup } from '../../lib/gerrit/gerritAPI/gerritGroup';
+import { GerritUser } from '../../lib/gerrit/gerritAPI/gerritUser';
+import { GerritAPIWith } from '../../lib/gerrit/gerritAPI/api';
+import { Repository } from '../../types/vscode-extension-git';
+import { getAPI } from '../../lib/gerrit/gerritAPI';
+import { getHTML } from './batchReview/html';
 
 class BatchReviewProvider implements Disposable {
 	private _panel: TypedWebviewPanel<BatchReviewWebviewMessage> | null = null;
@@ -120,7 +120,7 @@ class BatchReviewProvider implements Disposable {
 		await this._updateView();
 
 		const changes = await this._getYourTurnChanges();
-		
+
 		// Filter out changes that are already in the batch to avoid duplicates
 		const batchChangeIDs = new Set(
 			this._state.batchChanges.map((c) => c.changeID)
@@ -128,7 +128,7 @@ class BatchReviewProvider implements Disposable {
 		this._state.yourTurnChanges = changes.filter(
 			(change) => !batchChangeIDs.has(change.changeID)
 		);
-		
+
 		this._state.loading = false;
 		await this._updateView();
 	}
@@ -381,14 +381,25 @@ class BatchReviewProvider implements Disposable {
 				{
 					name: 'Code-Review',
 					possibleValues: [
-						{ score: '-2', description: 'This shall not be merged' },
+						{
+							score: '-2',
+							description: 'This shall not be merged',
+						},
 						{
 							score: '-1',
-							description: 'I would prefer this is not merged as is',
+							description:
+								'I would prefer this is not merged as is',
 						},
 						{ score: ' 0', description: 'No score' },
-						{ score: '+1', description: 'Looks good to me, but someone else must approve' },
-						{ score: '+2', description: 'Looks good to me, approved' },
+						{
+							score: '+1',
+							description:
+								'Looks good to me, but someone else must approve',
+						},
+						{
+							score: '+2',
+							description: 'Looks good to me, approved',
+						},
 					],
 				},
 			];
@@ -466,7 +477,11 @@ class BatchReviewProvider implements Disposable {
 		// Create a new change object with files info (immutable update)
 		if (changeList === 'yourTurn') {
 			const existingChange = this._state.yourTurnChanges[changeIndex];
-			const updatedChange = { ...existingChange, files, filesLoaded: true };
+			const updatedChange = {
+				...existingChange,
+				files,
+				filesLoaded: true,
+			};
 			this._state.yourTurnChanges = [
 				...this._state.yourTurnChanges.slice(0, changeIndex),
 				updatedChange,
@@ -474,7 +489,11 @@ class BatchReviewProvider implements Disposable {
 			];
 		} else {
 			const existingChange = this._state.batchChanges[changeIndex];
-			const updatedChange = { ...existingChange, files, filesLoaded: true };
+			const updatedChange = {
+				...existingChange,
+				files,
+				filesLoaded: true,
+			};
 			this._state.batchChanges = [
 				...this._state.batchChanges.slice(0, changeIndex),
 				updatedChange,
@@ -503,9 +522,7 @@ class BatchReviewProvider implements Disposable {
 		}
 	}
 
-	private async _handleOpenFileDiff(
-		msg: OpenFileDiffMessage
-	): Promise<void> {
+	private async _handleOpenFileDiff(msg: OpenFileDiffMessage): Promise<void> {
 		const { changeID, filePath } = msg.body;
 
 		// Get the change from Gerrit
