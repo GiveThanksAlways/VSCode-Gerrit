@@ -60,15 +60,15 @@ class BatchReviewProvider implements Disposable {
 		private readonly _context: ExtensionContext
 	) {}
 
-	   public static async create(
-		   gerritRepo: Repository,
-		   context: ExtensionContext
-	   ): Promise<BatchReviewProvider> {
-		   const provider = new this(gerritRepo, context);
-		   // Immediately load Incoming Reviews on creation
-		   await provider._handleGetIncomingReviews();
-		   return provider;
-	   }
+	public static async create(
+		gerritRepo: Repository,
+		context: ExtensionContext
+	): Promise<BatchReviewProvider> {
+		const provider = new this(gerritRepo, context);
+		// Immediately load Incoming Reviews on creation
+		await provider._handleGetIncomingReviews();
+		return provider;
+	}
 
 	private async _getYourTurnChanges(): Promise<BatchReviewChange[]> {
 		// Query changes matching "Your Turn" criteria
@@ -126,19 +126,19 @@ class BatchReviewProvider implements Disposable {
 			'-owner:self' as GerritChangeFilter,
 		];
 
-		   // Only pass defined options to avoid &o=undefined in the query
-		   const options = [
-			   GerritAPIWith.DETAILED_ACCOUNTS,
-			   GerritAPIWith.DETAILED_LABELS,
-			   GerritAPIWith.SUBMITTABLE,
-		   ].filter(Boolean);
+		// Only pass defined options to avoid &o=undefined in the query
+		const options = [
+			GerritAPIWith.DETAILED_ACCOUNTS,
+			GerritAPIWith.DETAILED_LABELS,
+			GerritAPIWith.SUBMITTABLE,
+		].filter(Boolean);
 
-		   const subscription = await GerritChange.getChanges(
-			   [filters],
-			   { offset: 0, count: 100 },
-			   // Only spread options if not empty
-			   ...options
-		   );
+		const subscription = await GerritChange.getChanges(
+			[filters],
+			{ offset: 0, count: 100 },
+			// Only spread options if not empty
+			...options
+		);
 
 		if (!subscription) {
 			return [];
@@ -479,15 +479,11 @@ class BatchReviewProvider implements Disposable {
 				continue;
 			}
 
-			const result = await api.setReviewWithDetails(
+			// Use setLabelsOnly to only set labels without modifying reviewers/CC
+			const result = await api.setLabelsOnly(
 				change.changeID,
 				currentRevision.id,
-				{
-					labels: { 'Code-Review': 2 },
-					publishDrafts: false,
-					reviewers: [],
-					cc: [],
-				}
+				{ 'Code-Review': 2 }
 			);
 
 			if (result.success) {
@@ -551,15 +547,11 @@ class BatchReviewProvider implements Disposable {
 				continue;
 			}
 
-			const result = await api.setReviewWithDetails(
+			// Use setLabelsOnly to only set labels without modifying reviewers/CC
+			const result = await api.setLabelsOnly(
 				change.changeID,
 				currentRevision.id,
-				{
-					labels: { 'Code-Review': 2 },
-					publishDrafts: false,
-					reviewers: [],
-					cc: [],
-				}
+				{ 'Code-Review': 2 }
 			);
 
 			if (result.success) {
@@ -1004,15 +996,15 @@ class BatchReviewProvider implements Disposable {
 		msg: BatchReviewWebviewMessage
 	): Promise<void> {
 		switch (msg.type) {
-			   case 'ready':
-				   // On ready, load Incoming Reviews instead of Your Turn
-				   await this._handleGetIncomingReviews();
-				   // Send initial automation status
-				   await this._sendAutomationStatus(
-					   this._apiServer?.isRunning() ?? false,
-					   this._apiServer?.getPort() ?? null
-				   );
-				   break;
+			case 'ready':
+				// On ready, load Incoming Reviews instead of Your Turn
+				await this._handleGetIncomingReviews();
+				// Send initial automation status
+				await this._sendAutomationStatus(
+					this._apiServer?.isRunning() ?? false,
+					this._apiServer?.getPort() ?? null
+				);
+				break;
 			case 'getYourTurnChanges':
 				// Legacy: use getIncomingReviews instead
 				await this._handleGetIncomingReviews();

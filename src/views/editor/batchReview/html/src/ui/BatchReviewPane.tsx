@@ -1362,7 +1362,48 @@ export const BatchReviewPane: VFC = () => {
 								Clear All
 							</button>
 						</div>
-						<div className="review-panel">
+
+						{/* Batch Actions Section - for +2 All operations */}
+						<div className="review-panel batch-operations">
+							<div className="section-header">
+								<span className="codicon codicon-layers"></span>
+								Batch Actions
+							</div>
+							<p className="section-description">
+								Apply +2 to all changes in batch at once
+							</p>
+							<div className="submit-buttons">
+								<button
+									onClick={handlePlus2All}
+									disabled={state.batchChanges.length === 0}
+									className="button-plus2"
+									title="Apply Code-Review +2 to all batch changes"
+								>
+									<span className="codicon codicon-pass"></span>
+									+2 All ({state.batchChanges.length})
+								</button>
+								<button
+									onClick={handlePlus2AllAndSubmit}
+									disabled={state.batchChanges.length === 0}
+									className="button-combo"
+									title="Apply +2 and submit all submittable changes"
+								>
+									<span className="codicon codicon-rocket"></span>
+									+2 All &amp; Submit
+								</button>
+							</div>
+						</div>
+
+						{/* Individual Review Section - for custom reviews */}
+						<div className="review-panel individual-review">
+							<div className="section-header">
+								<span className="codicon codicon-comment-discussion"></span>
+								Individual Review
+							</div>
+							<p className="section-description">
+								Add reviewers, CC, or custom scores
+							</p>
+
 							{/* Reviewers and CC */}
 							<PeoplePicker
 								label="Reviewers"
@@ -1421,26 +1462,6 @@ export const BatchReviewPane: VFC = () => {
 							</div>
 
 							{/* Submit buttons */}
-							<div className="submit-buttons">
-								<button
-									onClick={handlePlus2All}
-									disabled={state.batchChanges.length === 0}
-									className="button-plus2"
-									title="Apply Code-Review +2 to all batch changes"
-								>
-									<span className="codicon codicon-pass"></span>
-									+2 All ({state.batchChanges.length})
-								</button>
-								<button
-									onClick={handlePlus2AllAndSubmit}
-									disabled={state.batchChanges.length === 0}
-									className="button-combo"
-									title="Apply +2 and submit all submittable changes"
-								>
-									<span className="codicon codicon-rocket"></span>
-									+2 All &amp; Submit
-								</button>
-							</div>
 							<div className="submit-buttons">
 								<button
 									onClick={handleSubmitPatch}

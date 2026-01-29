@@ -1676,6 +1676,77 @@ export class GerritAPI {
 		}
 	}
 
+	/**
+	 * Set only labels on a change without modifying reviewers or CC.
+	 * This is a simpler version of setReview that avoids the "remove reviewer not permitted" error.
+	 */
+	public async setLabelsOnly(
+		changeID: string,
+		revisionID: string,
+		labels: Record<string, number>
+	): Promise<{ success: boolean; error?: string }> {
+		const { url } = this._getUrlAndParams({
+			path: `changes/${changeID}/revisions/${revisionID}/review`,
+			method: 'POST',
+		});
+
+		if (!url) {
+			return { success: false, error: 'No URL configured' };
+		}
+
+		try {
+			const response = await got(url, {
+				method: 'POST',
+				body: JSON.stringify({
+					labels: labels,
+				}),
+				cookieJar: this._getCookieJar({ method: 'POST', path: '' }),
+				...this._getRequestSettings(),
+			});
+
+			if (response.statusCode >= 200 && response.statusCode < 300) {
+				return { success: true };
+			}
+
+			return {
+				success: false,
+				error: `HTTP ${response.statusCode}: ${response.statusMessage}`,
+			};
+		} catch (err) {
+			if (!(err instanceof RequestError) || !err.response) {
+				return { success: false, error: String(err) };
+			}
+
+			// Parse the error body for detailed Gerrit error messages
+			let errorMessage = err.message || 'Unknown error';
+			if (err.response?.body) {
+				const body =
+					typeof err.response.body === 'string'
+						? this._stripMagicPrefix(err.response.body)
+						: '';
+				if (body && !body.startsWith('{')) {
+					errorMessage = body;
+				} else if (body) {
+					const parsed = this._tryParseJSON<{ message?: string }>(
+						body
+					);
+					if (parsed?.message) {
+						errorMessage = parsed.message;
+					}
+				}
+			}
+
+			if (err.response?.statusCode) {
+				return {
+					success: false,
+					error: `HTTP ${err.response.statusCode}: ${errorMessage}`,
+				};
+			}
+
+			return { success: false, error: errorMessage };
+		}
+	}
+
 	public async getGerritVersion(): Promise<VersionNumber | null> {
 		const config = {
 			path: 'config/server/version',

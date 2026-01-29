@@ -1621,3 +1621,119 @@ input:focus-visible,
 	outline: 2px solid var(--vscode-focusBorder);
 	outline-offset: 2px;
 }
+
+/* =========================================
+   Separated Review Sections
+   ========================================= */
+
+/* Section Headers */
+.section-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--vscode-foreground);
+	margin-bottom: 4px;
+}
+
+.section-header .codicon {
+	font-size: 16px;
+}
+
+.section-description {
+	font-size: 12px;
+	color: var(--vscode-descriptionForeground);
+	margin: 0 0 12px 0;
+}
+
+/* Batch Operations Section */
+.review-panel.batch-operations {
+	background: linear-gradient(
+		135deg,
+		rgba(33, 150, 83, 0.1) 0%,
+		rgba(39, 174, 96, 0.05) 100%
+	);
+	border: 1px solid rgba(39, 174, 96, 0.3);
+	border-radius: 8px;
+	margin-bottom: 16px;
+}
+
+.review-panel.batch-operations .section-header {
+	color: var(--batch-success);
+}
+
+.review-panel.batch-operations .section-header .codicon {
+	color: var(--batch-success);
+}
+
+/* Individual Review Section */
+.review-panel.individual-review {
+	background: linear-gradient(
+		135deg,
+		rgba(96, 165, 250, 0.08) 0%,
+		rgba(59, 130, 246, 0.04) 100%
+	);
+	border: 1px solid rgba(96, 165, 250, 0.2);
+	border-radius: 8px;
+}
+
+.review-panel.individual-review .section-header {
+	color: var(--vscode-textLink-foreground);
+}
+
+.review-panel.individual-review .section-header .codicon {
+	color: var(--vscode-textLink-foreground);
+}
+
+/* Button Styling for +2 All */
+.button-plus2 {
+	background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+	color: white;
+	border: none;
+	padding: 8px 16px;
+	border-radius: 6px;
+	font-weight: 500;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	transition: all 0.2s ease;
+	box-shadow: 0 2px 4px rgba(34, 197, 94, 0.3);
+}
+
+.button-plus2:hover:not(:disabled) {
+	transform: translateY(-1px);
+	box-shadow: 0 4px 8px rgba(34, 197, 94, 0.4);
+}
+
+.button-plus2:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+/* Combo Button */
+.button-combo {
+	background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+	color: white;
+	border: none;
+	padding: 8px 16px;
+	border-radius: 6px;
+	font-weight: 500;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	transition: all 0.2s ease;
+	box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
+.button-combo:hover:not(:disabled) {
+	transform: translateY(-1px);
+	box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
+}
+
+.button-combo:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
