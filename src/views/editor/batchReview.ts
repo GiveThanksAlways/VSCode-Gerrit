@@ -734,6 +734,7 @@ class BatchReviewProvider implements Disposable {
 		const movingSet = new Set(changeIDs);
 
 		// Separate items: those being moved and those staying
+		// Filter preserves the original order from targetArray
 		const movingItems = targetArray.filter((c) =>
 			movingSet.has(c.changeID)
 		);
