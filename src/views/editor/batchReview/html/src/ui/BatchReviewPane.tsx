@@ -521,7 +521,7 @@ interface ChangeListProps {
 	selectedChanges: Set<string>;
 	onSelectionChange: (changeID: string, selected: boolean) => void;
 	onSelectAll: (selected: boolean) => void;
-	onMultiSelect: (changeIDs: string[], mode: 'add' | 'replace' | 'toggle') => void;
+	onMultiSelect: (changeIDs: string[], mode: 'add' | 'replace') => void;
 	title: string;
 	showScores?: boolean;
 	listType: 'yourTurn' | 'batch';
@@ -550,13 +550,21 @@ const ChangeList: VFC<ChangeListProps> = ({
 	const [isDragOver, setIsDragOver] = useState(false);
 	// Anchor index: the starting point for shift-click range selection
 	const [anchorIndex, setAnchorIndex] = useState<number | null>(null);
+	// Track the previous changes array to detect reordering/modifications
+	const prevChangesRef = React.useRef<BatchReviewChange[]>(changes);
 
-	// Reset anchor when changes array changes (e.g., after moving items)
+	// Reset anchor when changes array is modified (items added, removed, or reordered)
 	useEffect(() => {
-		if (anchorIndex !== null && anchorIndex >= changes.length) {
+		const prevChanges = prevChangesRef.current;
+		const changesModified = 
+			changes.length !== prevChanges.length ||
+			changes.some((c, i) => prevChanges[i]?.changeID !== c.changeID);
+		
+		if (changesModified) {
 			setAnchorIndex(null);
 		}
-	}, [changes.length, anchorIndex]);
+		prevChangesRef.current = changes;
+	}, [changes]);
 
 	const handleDragOver = (e: React.DragEvent) => {
 		e.preventDefault();
@@ -936,59 +944,28 @@ export const BatchReviewPane: VFC = () => {
 	};
 
 	/**
-	 * Unified multi-select handler for Your Turn list
-	 * @param changeIDs - Array of change IDs to select
-	 * @param mode - 'add' adds to selection, 'replace' replaces selection, 'toggle' toggles each
+	 * Helper to apply multi-select operation to a Set
 	 */
-	const handleYourTurnMultiSelect = (changeIDs: string[], mode: 'add' | 'replace' | 'toggle') => {
-		setSelectedYourTurn(prev => {
-			if (mode === 'replace') {
-				return new Set(changeIDs);
-			} else if (mode === 'add') {
-				const newSet = new Set(prev);
-				changeIDs.forEach(id => newSet.add(id));
-				return newSet;
-			} else {
-				// toggle
-				const newSet = new Set(prev);
-				changeIDs.forEach(id => {
-					if (newSet.has(id)) {
-						newSet.delete(id);
-					} else {
-						newSet.add(id);
-					}
-				});
-				return newSet;
-			}
-		});
+	const applyMultiSelect = (
+		prev: Set<string>,
+		changeIDs: string[],
+		mode: 'add' | 'replace'
+	): Set<string> => {
+		if (mode === 'replace') {
+			return new Set(changeIDs);
+		}
+		// mode === 'add'
+		const newSet = new Set(prev);
+		changeIDs.forEach(id => newSet.add(id));
+		return newSet;
 	};
 
-	/**
-	 * Unified multi-select handler for Batch list
-	 * @param changeIDs - Array of change IDs to select
-	 * @param mode - 'add' adds to selection, 'replace' replaces selection, 'toggle' toggles each
-	 */
-	const handleBatchMultiSelect = (changeIDs: string[], mode: 'add' | 'replace' | 'toggle') => {
-		setSelectedBatch(prev => {
-			if (mode === 'replace') {
-				return new Set(changeIDs);
-			} else if (mode === 'add') {
-				const newSet = new Set(prev);
-				changeIDs.forEach(id => newSet.add(id));
-				return newSet;
-			} else {
-				// toggle
-				const newSet = new Set(prev);
-				changeIDs.forEach(id => {
-					if (newSet.has(id)) {
-						newSet.delete(id);
-					} else {
-						newSet.add(id);
-					}
-				});
-				return newSet;
-			}
-		});
+	const handleYourTurnMultiSelect = (changeIDs: string[], mode: 'add' | 'replace') => {
+		setSelectedYourTurn(prev => applyMultiSelect(prev, changeIDs, mode));
+	};
+
+	const handleBatchMultiSelect = (changeIDs: string[], mode: 'add' | 'replace') => {
+		setSelectedBatch(prev => applyMultiSelect(prev, changeIDs, mode));
 	};
 
 	const handleFileViewModeChange = (mode: 'list' | 'tree') => {
