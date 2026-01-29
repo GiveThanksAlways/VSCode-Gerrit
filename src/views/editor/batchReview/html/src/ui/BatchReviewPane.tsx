@@ -1322,7 +1322,7 @@ export const BatchReviewPane: VFC = () => {
 							disabled={selectedYourTurn.size === 0}
 							className="button-primary"
 						>
-							<span className="codicon codicon-arrow-down"></span>
+							<span className="codicon codicon-arrow-right"></span>
 							Add to Batch ({selectedYourTurn.size})
 						</button>
 					</div>
@@ -1350,7 +1350,7 @@ export const BatchReviewPane: VFC = () => {
 								disabled={selectedBatch.size === 0}
 								className="button-secondary"
 							>
-								<span className="codicon codicon-arrow-up"></span>
+								<span className="codicon codicon-arrow-left"></span>
 								Remove ({selectedBatch.size})
 							</button>
 							<button
