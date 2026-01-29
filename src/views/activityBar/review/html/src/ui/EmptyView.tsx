@@ -1,15 +1,8 @@
-import { sendMessage } from '../lib/messageHandler';
 import { globalStyles } from '../lib/styles';
 import { createStyles } from '../lib/style';
 import * as React from 'react';
 
 export const EmptyView: React.VFC = () => {
-	const handleBatchReviewClick = React.useCallback(() => {
-		sendMessage({
-			type: 'openBatchReview',
-		});
-	}, []);
-
 	return (
 		<div style={styles.container}>
 			<div style={styles.emptyMessage}>
@@ -18,19 +11,10 @@ export const EmptyView: React.VFC = () => {
 						<div style={styles.header}>{'No change selected'}</div>
 						<div style={styles.subtext}>
 							Select a change from "Your Turn" or use Batch Review
+							above
 						</div>
 					</div>
 				</div>
-			</div>
-			<div style={styles.batchButtonContainer}>
-				<button
-					className="batch-review-button"
-					onClick={handleBatchReviewClick}
-					title="Open Batch Review to review multiple changes at once"
-				>
-					<span className="codicon codicon-layers"></span>
-					Batch Review
-				</button>
 			</div>
 		</div>
 	);
@@ -57,9 +41,5 @@ const styles = createStyles({
 	emptyMessage: {
 		marginTop: '40px',
 		marginBottom: '24px',
-	},
-	batchButtonContainer: {
-		width: '100%',
-		marginTop: '8px',
 	},
 });

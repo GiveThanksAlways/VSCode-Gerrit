@@ -21,6 +21,7 @@ import { getCommentDecorationProvider } from './providers/commentDecorationProvi
 import { SearchResultsTreeProvider } from './views/activityBar/searchResults';
 import { CommentManager, DocumentManager } from './providers/commentProvider';
 import { getOrCreateReviewWebviewProvider } from './views/activityBar/review';
+import { getOrCreateBatchReviewButtonProvider } from './views/activityBar/batchReviewButton';
 import { getOrCreateChangesTreeProvider } from './views/activityBar/changes';
 import { FileProvider, GERRIT_FILE_SCHEME } from './providers/fileProvider';
 import { getConfiguration, initConfigListener } from './lib/vscode/config';
@@ -127,6 +128,18 @@ export async function activate(context: ExtensionContext): Promise<void> {
 	// Register tree views
 	context.subscriptions.push(getOrCreateChangesTreeProvider(gerritRepo));
 	context.subscriptions.push(getOrCreateQuickCheckoutTreeProvider());
+	// Register the Batch Review Button at top of sidebar
+	context.subscriptions.push(
+		window.registerWebviewViewProvider(
+			'gerrit:batchReviewButton',
+			getOrCreateBatchReviewButtonProvider(context),
+			{
+				webviewOptions: {
+					retainContextWhenHidden: true,
+				},
+			}
+		)
+	);
 	context.subscriptions.push(
 		window.registerWebviewViewProvider(
 			'gerrit:review',
