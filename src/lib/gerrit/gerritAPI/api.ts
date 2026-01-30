@@ -1696,14 +1696,14 @@ export class GerritAPI {
 		}
 
 		try {
-			   const response = await got(url, {
-				   method: 'POST',
-				   body: JSON.stringify({
-					   labels: labels,
-				   }),
-				   cookieJar: this._getCookieJar({ method: 'POST', path: '' }),
-				   headers: this._headers(true),
-			   });
+			const response = await got(url, {
+				method: 'POST',
+				body: JSON.stringify({
+					labels: labels,
+				}),
+				cookieJar: this._getCookieJar({ method: 'POST', path: '' }),
+				headers: this._headers(true),
+			});
 
 			if (response.statusCode >= 200 && response.statusCode < 300) {
 				return { success: true };

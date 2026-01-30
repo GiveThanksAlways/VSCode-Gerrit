@@ -404,7 +404,11 @@ const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 }) => {
 	const [expanded, setExpanded] = useState(false);
 	const [loadingFiles, setLoadingFiles] = useState(false);
-	const [chainInfo, setChainInfo] = useState<{ inChain: boolean; position?: number; length?: number }>({ inChain: false });
+	const [chainInfo, setChainInfo] = useState<{
+		inChain: boolean;
+		position?: number;
+		length?: number;
+	}>({ inChain: false });
 
 	useEffect(() => {
 		vscode.postMessage({
@@ -412,7 +416,10 @@ const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 			body: { changeID: change.changeId }, // Use Change-Id
 		});
 		const handler = (event: MessageEvent) => {
-			if (event.data?.type === 'chainInfo' && event.data.body.changeID === change.changeId) {
+			if (
+				event.data?.type === 'chainInfo' &&
+				event.data.body.changeID === change.changeId
+			) {
 				setChainInfo(event.data.body);
 			}
 		};
@@ -495,13 +502,23 @@ const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 						type="checkbox"
 						checked={selected}
 						onChange={(e) => {
-							onSelectionChange(change.changeID, e.target.checked);
+							onSelectionChange(
+								change.changeID,
+								e.target.checked
+							);
 						}}
 					/>
 					<div className="change-info">
 						<div className="change-header">
-							<span className="change-number">#{change.number}</span>
-							<span className="change-subject" title={change.subject}>{change.subject}</span>
+							<span className="change-number">
+								#{change.number}
+							</span>
+							<span
+								className="change-subject"
+								title={change.subject}
+							>
+								{change.subject}
+							</span>
 							{showScore && change.score !== undefined && (
 								<span
 									className={`change-score score-${Math.min(10, Math.max(1, Math.round(change.score)))}`}
@@ -511,32 +528,45 @@ const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 								</span>
 							)}
 							{change.hasCodeReviewPlus2 && (
-								<span className="status-badge plus2" title="Has Code-Review +2">
+								<span
+									className="status-badge plus2"
+									title="Has Code-Review +2"
+								>
 									<span className="codicon codicon-check"></span>
 								</span>
 							)}
 							{change.submittable && (
-								<span className="status-badge submittable" title="Ready to submit">
+								<span
+									className="status-badge submittable"
+									title="Ready to submit"
+								>
 									<span className="codicon codicon-git-merge"></span>
 								</span>
 							)}
-			{chainInfo.inChain && (
-				<span
-					className="chain-badge"
-					title={
-						chainInfo.position != null && chainInfo.length != null
-							? `This change is part of a relation chain (${chainInfo.position} of ${chainInfo.length}).\n\nThe Batch view will submit them in order automatically for you. You just have to make sure you have a connected chain that goes in order 1,2,3...`
-							: 'This change is part of a relation chain. Submit all changes in order, starting from the base.'
-					}
-				>
-					<span className="codicon codicon-link"></span>
-				</span>
-			)}
+							{chainInfo.inChain && (
+								<span
+									className="chain-badge"
+									title={
+										chainInfo.position != null &&
+										chainInfo.length != null
+											? `This change is part of a relation chain (${chainInfo.position} of ${chainInfo.length}).\n\nThe Batch view will submit them in order automatically for you. You just have to make sure you have a connected chain that goes in order 1,2,3...`
+											: 'This change is part of a relation chain. Submit all changes in order, starting from the base.'
+									}
+								>
+									<span className="codicon codicon-link"></span>
+								</span>
+							)}
 						</div>
 						<div className="change-details">
-							<span className="change-project">{change.project}</span>
-							<span className="change-branch">{change.branch}</span>
-							<span className="change-owner">{change.owner.name}</span>
+							<span className="change-project">
+								{change.project}
+							</span>
+							<span className="change-branch">
+								{change.branch}
+							</span>
+							<span className="change-owner">
+								{change.owner.name}
+							</span>
 						</div>
 					</div>
 				</label>
@@ -775,37 +805,37 @@ const ChangeList: VFC<ChangeListProps> = ({
 				</div>
 			</div>
 			<div className="changes-container">
-				   {changes.length === 0 ? (
+				{changes.length === 0 ? (
 					<div className="empty-message drop-hint">
 						{isDragOver ? 'Drop here to add' : 'No changes'}
 					</div>
-				   ) : (
-					   changes.map((change, index) => {
-						   // Determine if this item should show a drop indicator
-						   let indicator: 'before' | 'after' | null = null;
-						   if (dropTargetIndex === index) {
-							   indicator = 'before';
-						   } else if (dropTargetIndex === index + 1) {
-							   indicator = 'after';
-						   }
-						   return (
-							   <ExpandableChangeItem
-								   key={change.changeID}
-								   change={change}
-								   selected={selectedChanges.has(change.changeID)}
-								   onSelectionChange={onSelectionChange}
-								   showScore={showScores}
-								   draggable={true}
-								   onDragStart={handleItemDragStart}
-								   onDragOver={handleItemDragOver}
-								   fileViewMode={fileViewMode}
-								   index={index}
-								   onItemClick={handleItemClick}
-								   showDropIndicator={indicator}
-							   />
-						   );
-					   })
-				   )}
+				) : (
+					changes.map((change, index) => {
+						// Determine if this item should show a drop indicator
+						let indicator: 'before' | 'after' | null = null;
+						if (dropTargetIndex === index) {
+							indicator = 'before';
+						} else if (dropTargetIndex === index + 1) {
+							indicator = 'after';
+						}
+						return (
+							<ExpandableChangeItem
+								key={change.changeID}
+								change={change}
+								selected={selectedChanges.has(change.changeID)}
+								onSelectionChange={onSelectionChange}
+								showScore={showScores}
+								draggable={true}
+								onDragStart={handleItemDragStart}
+								onDragOver={handleItemDragOver}
+								fileViewMode={fileViewMode}
+								index={index}
+								onItemClick={handleItemClick}
+								showDropIndicator={indicator}
+							/>
+						);
+					})
+				)}
 			</div>
 		</div>
 	);

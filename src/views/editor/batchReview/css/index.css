@@ -1112,10 +1112,10 @@ button:disabled {
 			100%
 	);
 	--batch-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.1);
-	--batch-shadow-md:
-		0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-	--batch-shadow-lg:
-		0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+	--batch-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+		0 2px 4px -2px rgba(0, 0, 0, 0.1);
+	--batch-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+		0 4px 6px -4px rgba(0, 0, 0, 0.1);
 	--batch-glass-bg: color-mix(
 		in srgb,
 		var(--vscode-sideBar-background) 85%,
@@ -1764,7 +1764,6 @@ input:focus-visible,
 	cursor: not-allowed;
 }
 
-.chain-badge { /* Always visible for changes in a chain */
 .chain-badge {
 	display: inline-flex;
 	align-items: center;
@@ -1775,4 +1774,3 @@ input:focus-visible,
 .chain-badge .codicon-link {
 	font-size: 14px;
 }
-

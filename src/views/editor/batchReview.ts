@@ -35,6 +35,7 @@ import {
 } from '../../lib/gerrit/gerritAPI/filters';
 import { FileTreeView } from '../activityBar/changes/changeTreeView/fileTreeView';
 import { GerritRevisionFileStatus } from '../../lib/gerrit/gerritAPI/types';
+import { getOrderedBatch, isChangeChained } from './batchReview/chainUtils';
 import { BatchReviewState, BatchReviewPerson } from './batchReview/state';
 import { GerritChange } from '../../lib/gerrit/gerritAPI/gerritChange';
 import { GerritGroup } from '../../lib/gerrit/gerritAPI/gerritGroup';
@@ -42,7 +43,6 @@ import { GerritUser } from '../../lib/gerrit/gerritAPI/gerritUser';
 import { GerritAPIWith } from '../../lib/gerrit/gerritAPI/api';
 import { Repository } from '../../types/vscode-extension-git';
 import { getAPI } from '../../lib/gerrit/gerritAPI';
-import { getOrderedBatch, isChangeChained } from './batchReview/chainUtils';
 import { getHTML } from './batchReview/html';
 
 class BatchReviewProvider implements Disposable {
@@ -95,31 +95,36 @@ class BatchReviewProvider implements Disposable {
 			return [];
 		}
 
-		   const api = await getAPI();
-		   return Promise.all(changes.map(async (change) => {
-			   const ownerName: string =
-				   'name' in change.owner
-					   ? (change.owner.name as string)
-					   : `Account ${change.owner._account_id}`;
-			   let gerritUrl: string | undefined = undefined;
-			   if (api && change.project && change.number) {
-				   gerritUrl = api.getPublicUrl(`c/${change.project}/+/${change.number}`) || undefined;
-			   }
-			   return {
-				   changeId: change.change_id, // Gerrit Change-Id (Ixxxx...)
-				   changeID: change.changeID,  // REST id (test_gpg~251200)
-				   number: change.number,
-				   subject: change.subject,
-				   project: change.project,
-				   branch: change.branch,
-				   owner: {
-					   name: ownerName,
-					   accountID: change.owner._account_id,
-				   },
-				   updated: change.updated,
-				   gerritUrl,
-			   } as BatchReviewChange;
-		   }));
+		const api = await getAPI();
+		return Promise.all(
+			changes.map(async (change) => {
+				const ownerName: string =
+					'name' in change.owner
+						? (change.owner.name as string)
+						: `Account ${change.owner._account_id}`;
+				let gerritUrl: string | undefined = undefined;
+				if (api && change.project && change.number) {
+					gerritUrl =
+						api.getPublicUrl(
+							`c/${change.project}/+/${change.number}`
+						) || undefined;
+				}
+				return {
+					changeId: change.change_id, // Gerrit Change-Id (Ixxxx...)
+					changeID: change.changeID, // REST id (test_gpg~251200)
+					number: change.number,
+					subject: change.subject,
+					project: change.project,
+					branch: change.branch,
+					owner: {
+						name: ownerName,
+						accountID: change.owner._account_id,
+					},
+					updated: change.updated,
+					gerritUrl,
+				} as BatchReviewChange;
+			})
+		);
 	}
 
 	/**
@@ -137,17 +142,19 @@ class BatchReviewProvider implements Disposable {
 		// Only pass defined options to avoid &o=undefined in the query
 		const options: GerritAPIWith[] = [
 			GerritAPIWith.DETAILED_ACCOUNTS,
-			GerritAPIWith.DETAILED_LABELS
+			GerritAPIWith.DETAILED_LABELS,
 		];
 		if ((GerritAPIWith as any).SUBMITTABLE) {
 			options.push((GerritAPIWith as any).SUBMITTABLE);
 		}
 		let subscription;
 		if (options.length > 0) {
-			subscription = await GerritChange.getChanges.apply(
-				GerritChange,
-				[[filters], { offset: 0, count: 100 }, undefined, ...options]
-			);
+			subscription = await GerritChange.getChanges.apply(GerritChange, [
+				[filters],
+				{ offset: 0, count: 100 },
+				undefined,
+				...options,
+			]);
 		} else {
 			subscription = await GerritChange.getChanges(
 				[filters],
@@ -165,38 +172,43 @@ class BatchReviewProvider implements Disposable {
 			return [];
 		}
 
-		   const api = await getAPI();
-		   return Promise.all(changes.map(async (change) => {
-			   const ownerName: string =
-				   'name' in change.owner
-					   ? (change.owner.name as string)
-					   : `Account ${change.owner._account_id}`;
+		const api = await getAPI();
+		return Promise.all(
+			changes.map(async (change) => {
+				const ownerName: string =
+					'name' in change.owner
+						? (change.owner.name as string)
+						: `Account ${change.owner._account_id}`;
 
-			   // Check if change has Code-Review +2
-			   const hasCodeReviewPlus2 = this._hasCodeReviewPlus2(change);
+				// Check if change has Code-Review +2
+				const hasCodeReviewPlus2 = this._hasCodeReviewPlus2(change);
 
-			   let gerritUrl: string | undefined = undefined;
-			   if (api && change.project && change.number) {
-				   gerritUrl = api.getPublicUrl(`c/${change.project}/+/${change.number}`) || undefined;
-			   }
+				let gerritUrl: string | undefined = undefined;
+				if (api && change.project && change.number) {
+					gerritUrl =
+						api.getPublicUrl(
+							`c/${change.project}/+/${change.number}`
+						) || undefined;
+				}
 
-			   return {
-				   changeId: change.change_id, // Gerrit Change-Id (Ixxxx...)
-				   changeID: change.changeID,  // REST id (test_gpg~251200)
-				   number: change.number,
-				   subject: change.subject,
-				   project: change.project,
-				   branch: change.branch,
-				   owner: {
-					   name: ownerName,
-					   accountID: change.owner._account_id,
-				   },
-				   updated: change.updated,
-				   submittable: (change as any).submittable ?? false,
-				   hasCodeReviewPlus2,
-				   gerritUrl,
-			   } as BatchReviewChange;
-		   }));
+				return {
+					changeId: change.change_id, // Gerrit Change-Id (Ixxxx...)
+					changeID: change.changeID, // REST id (test_gpg~251200)
+					number: change.number,
+					subject: change.subject,
+					project: change.project,
+					branch: change.branch,
+					owner: {
+						name: ownerName,
+						accountID: change.owner._account_id,
+					},
+					updated: change.updated,
+					submittable: (change as any).submittable ?? false,
+					hasCodeReviewPlus2,
+					gerritUrl,
+				} as BatchReviewChange;
+			})
+		);
 	}
 
 	/**
@@ -206,7 +218,9 @@ class BatchReviewProvider implements Disposable {
 		if (!change.labels) {
 			return false;
 		}
-		const codeReviewLabel = (change.labels && (change.labels as any)['Code-Review']) || undefined;
+		const codeReviewLabel =
+			(change.labels && (change.labels as any)['Code-Review']) ||
+			undefined;
 		if (!codeReviewLabel) {
 			return false;
 		}
@@ -216,7 +230,9 @@ class BatchReviewProvider implements Disposable {
 		}
 		// Check all votes for +2
 		if ((codeReviewLabel as any).all) {
-			return (codeReviewLabel as any).all.some((vote: any) => vote.value === 2);
+			return (codeReviewLabel as any).all.some(
+				(vote: any) => vote.value === 2
+			);
 		}
 		return false;
 	}
@@ -392,19 +408,31 @@ class BatchReviewProvider implements Disposable {
 			return;
 		}
 		// Map REST IDs to Gerrit Change-Ids (camelCase)
-		const batchChangeIDToChangeId = Object.fromEntries(this._state.batchChanges.map(c => [c.changeID, c.changeId]));
-		const changeIdToBatchChangeID = Object.fromEntries(this._state.batchChanges.map(c => [c.changeId, c.changeID]));
-		const batchChangeIds = this._state.batchChanges.map(c => c.changeId);
+		const batchChangeIDToChangeId = Object.fromEntries(
+			this._state.batchChanges.map((c) => [c.changeID, c.changeId])
+		);
+		const changeIdToBatchChangeID = Object.fromEntries(
+			this._state.batchChanges.map((c) => [c.changeId, c.changeID])
+		);
+		const batchChangeIds = this._state.batchChanges.map((c) => c.changeId);
 		// Order by Gerrit Change-Id (camelCase)
 		const orderedChangeIds = await getOrderedBatch(batchChangeIds);
 		// Map back to REST IDs
-		const orderedIDs = orderedChangeIds.map(id => changeIdToBatchChangeID[id]).filter(Boolean);
-		const orderedChanges = orderedIDs.map(id => this._state.batchChanges.find(c => c.changeID === id)).filter(Boolean);
+		const orderedIDs = orderedChangeIds
+			.map((id) => changeIdToBatchChangeID[id])
+			.filter(Boolean);
+		const orderedChanges = orderedIDs
+			.map((id) =>
+				this._state.batchChanges.find((c) => c.changeID === id)
+			)
+			.filter(Boolean);
 		let plus2Success = 0;
 		let plus2Fail = 0;
 		const errors: string[] = [];
 		for (const change of orderedChanges) {
-			const changeObj = await GerritChange.getChangeOnce(change!.changeID);
+			const changeObj = await GerritChange.getChangeOnce(
+				change!.changeID
+			);
 			if (!changeObj) {
 				plus2Fail++;
 				errors.push(`Change ${change!.number}: Not found`);
@@ -426,7 +454,9 @@ class BatchReviewProvider implements Disposable {
 				change!.hasCodeReviewPlus2 = true;
 			} else {
 				plus2Fail++;
-				errors.push(`Change ${change!.number}: ${result.error || 'Unknown error'}`);
+				errors.push(
+					`Change ${change!.number}: ${result.error || 'Unknown error'}`
+				);
 			}
 		}
 		await this._updateView();
@@ -435,7 +465,9 @@ class BatchReviewProvider implements Disposable {
 				`+2 failed for ${plus2Fail} change(s):\n${errors.slice(0, 5).join('\n')}${errors.length > 5 ? `\n...and ${errors.length - 5} more` : ''}`
 			);
 		} else {
-			void window.showInformationMessage(`Successfully +2’d ${plus2Success} change(s).`);
+			void window.showInformationMessage(
+				`Successfully +2’d ${plus2Success} change(s).`
+			);
 		}
 	}
 
@@ -533,128 +565,175 @@ class BatchReviewProvider implements Disposable {
 			return;
 		}
 
-			   // Step 1: +2 all changes in dependency order
-			   let plus2Success = 0;
-			   let plus2Fail = 0;
-			   // Map REST IDs to Gerrit Change-Ids (camelCase)
-			   const batchChangeIDToChangeId = Object.fromEntries(this._state.batchChanges.map(c => [c.changeID, c.changeId]));
-			   const changeIdToBatchChangeID = Object.fromEntries(this._state.batchChanges.map(c => [c.changeId, c.changeID]));
-			   const batchChangeIDs = this._state.batchChanges.map(c => c.changeID);
-			   const batchChangeIds = this._state.batchChanges.map(c => c.changeId);
-			   console.log('[BatchReview] Batch changeIDs:', batchChangeIDs);
-			   console.log('[BatchReview] Batch changeIds:', batchChangeIds);
-			   // Order by Gerrit Change-Id (camelCase)
-			   const orderedChangeIds = await getOrderedBatch(batchChangeIds);
-			   console.log('[BatchReview] getOrderedBatch returned:', orderedChangeIds);
-			   // Map back to REST IDs
-			   const orderedIDs = orderedChangeIds.map(id => changeIdToBatchChangeID[id]).filter(Boolean);
-			   const orderedChanges = orderedIDs.map(id => {
-				   const found = this._state.batchChanges.find(c => c.changeID === id);
-				   if (!found) {
-					   console.warn('[BatchReview] No batch change found for ordered id:', id);
-				   }
-				   return found;
-			   }).filter(Boolean);
-			   console.log('[BatchReview] Applying +2 to all batch changes (ordered):', orderedIDs, 'orderedChanges:', orderedChanges.map(c => c?.changeID));
-			   for (const change of orderedChanges) {
-		   const changeObj = await GerritChange.getChangeOnce(change!.changeID);
-		   if (!changeObj) {
-			   plus2Fail++;
-			   continue;
-		   }
-		   const currentRevision = await changeObj.currentRevision();
-		   if (!currentRevision) {
-			   plus2Fail++;
-			   continue;
-		   }
-		   const result = await api.setLabelsOnly(
-			   change!.changeID,
-			   currentRevision.id,
-			   { 'Code-Review': 2 }
-		   );
-		   if (result.success) {
-			   plus2Success++;
-			   change!.hasCodeReviewPlus2 = true;
-		   } else {
-			   plus2Fail++;
-		   }
-	   }
-	   // Step 2: Submit all changes in the batch (ordered)
-	   let submitSuccess = 0;
-	   let submitFail = 0;
-	   const submitErrors: string[] = [];
-	   console.log('[BatchReview] Submitting all batch changes (ordered):', orderedIDs);
-	   for (const change of orderedChanges) {
-		   try {
-			   // Optionally, re-fetch to ensure submittable
-			   const changeObj = await GerritChange.getChangeOnce(change!.changeID);
-			   if (!changeObj) {
-				   submitFail++;
-				   submitErrors.push(`Change not found: ${change!.changeID}`);
-				   continue;
-			   }
-			   if (!(changeObj as any).submittable) {
-				   submitFail++;
-				   // Log requirements and label status for debugging
-				   const requirements = (changeObj as any).requirements || [];
-				   const labels = (changeObj as any).labels || {};
-				   console.warn(`[BatchReview] Not submittable: ${change!.changeID}`);
-				   console.warn(`[BatchReview] Requirements:`, requirements);
-				   console.warn(`[BatchReview] Labels:`, labels);
-				{
-					// Try to build a Gerrit URL if possible
-					let url = '';
-					try {
-						const api = await getAPI();
-						if (api && change!.project && change!.number) {
-							url = api.getPublicUrl(`c/${change!.project}/+/${change!.number}`) || '';
-						}
-					} catch {}
-					const changeLine = `#${change!.number}  ${change!.subject}`;
-					const urlLine = url ? `\n[View in Gerrit](${url})` : '';
-					const msg =
-						`${changeLine}${urlLine}` +
-						`\n\nThis change is not submittable. This may be due to relation chain dependencies.` +
-						(requirements.length > 0
-							? `\n\nRequirements:\n${requirements.map((r: any) => `- ${r.status}: ${r.fallback_text}`).join('\n')}`
-							: '');
-					void window.showWarningMessage(msg, { modal: true });
+		// Step 1: +2 all changes in dependency order
+		let plus2Success = 0;
+		let plus2Fail = 0;
+		// Map REST IDs to Gerrit Change-Ids (camelCase)
+		const batchChangeIDToChangeId = Object.fromEntries(
+			this._state.batchChanges.map((c) => [c.changeID, c.changeId])
+		);
+		const changeIdToBatchChangeID = Object.fromEntries(
+			this._state.batchChanges.map((c) => [c.changeId, c.changeID])
+		);
+		const batchChangeIDs = this._state.batchChanges.map((c) => c.changeID);
+		const batchChangeIds = this._state.batchChanges.map((c) => c.changeId);
+		console.log('[BatchReview] Batch changeIDs:', batchChangeIDs);
+		console.log('[BatchReview] Batch changeIds:', batchChangeIds);
+		// Order by Gerrit Change-Id (camelCase)
+		const orderedChangeIds = await getOrderedBatch(batchChangeIds);
+		console.log(
+			'[BatchReview] getOrderedBatch returned:',
+			orderedChangeIds
+		);
+		// Map back to REST IDs
+		const orderedIDs = orderedChangeIds
+			.map((id) => changeIdToBatchChangeID[id])
+			.filter(Boolean);
+		const orderedChanges = orderedIDs
+			.map((id) => {
+				const found = this._state.batchChanges.find(
+					(c) => c.changeID === id
+				);
+				if (!found) {
+					console.warn(
+						'[BatchReview] No batch change found for ordered id:',
+						id
+					);
 				}
-				   continue;
-			   }
-			   const result = await api.submitWithDetails(change!.changeID);
-			   if (result && result.success) {
-				   submitSuccess++;
-				   console.log(`[BatchReview] Submitted change: ${change!.changeID}`);
-			   } else {
-				   submitFail++;
-				   const errMsg = result && result.error ? result.error : 'Unknown error';
-				   submitErrors.push(`Failed to submit ${change!.changeID}: ${errMsg}`);
-				   console.warn(`[BatchReview] Failed to submit change: ${change!.changeID}`, result);
-			   }
-		   } catch (err: any) {
-			   submitFail++;
-			   submitErrors.push(`Exception for ${change!.changeID}: ${err?.message || err}`);
-			   console.error(`[BatchReview] Exception submitting change: ${change!.changeID}`, err);
-		   }
-	   }
-	   // Clear batch after submission (for UX, same as _handleSubmitBatch)
-	   this._state.batchChanges = [];
-	   await this._updateView();
+				return found;
+			})
+			.filter(Boolean);
+		console.log(
+			'[BatchReview] Applying +2 to all batch changes (ordered):',
+			orderedIDs,
+			'orderedChanges:',
+			orderedChanges.map((c) => c?.changeID)
+		);
+		for (const change of orderedChanges) {
+			const changeObj = await GerritChange.getChangeOnce(
+				change!.changeID
+			);
+			if (!changeObj) {
+				plus2Fail++;
+				continue;
+			}
+			const currentRevision = await changeObj.currentRevision();
+			if (!currentRevision) {
+				plus2Fail++;
+				continue;
+			}
+			const result = await api.setLabelsOnly(
+				change!.changeID,
+				currentRevision.id,
+				{ 'Code-Review': 2 }
+			);
+			if (result.success) {
+				plus2Success++;
+				change!.hasCodeReviewPlus2 = true;
+			} else {
+				plus2Fail++;
+			}
+		}
+		// Step 2: Submit all changes in the batch (ordered)
+		let submitSuccess = 0;
+		let submitFail = 0;
+		const submitErrors: string[] = [];
+		console.log(
+			'[BatchReview] Submitting all batch changes (ordered):',
+			orderedIDs
+		);
+		for (const change of orderedChanges) {
+			try {
+				// Optionally, re-fetch to ensure submittable
+				const changeObj = await GerritChange.getChangeOnce(
+					change!.changeID
+				);
+				if (!changeObj) {
+					submitFail++;
+					submitErrors.push(`Change not found: ${change!.changeID}`);
+					continue;
+				}
+				if (!(changeObj as any).submittable) {
+					submitFail++;
+					// Log requirements and label status for debugging
+					const requirements = (changeObj as any).requirements || [];
+					const labels = (changeObj as any).labels || {};
+					console.warn(
+						`[BatchReview] Not submittable: ${change!.changeID}`
+					);
+					console.warn(`[BatchReview] Requirements:`, requirements);
+					console.warn(`[BatchReview] Labels:`, labels);
+					{
+						// Try to build a Gerrit URL if possible
+						let url = '';
+						try {
+							const api = await getAPI();
+							if (api && change!.project && change!.number) {
+								url =
+									api.getPublicUrl(
+										`c/${change!.project}/+/${change!.number}`
+									) || '';
+							}
+						} catch {}
+						const changeLine = `#${change!.number}  ${change!.subject}`;
+						const urlLine = url ? `\n[View in Gerrit](${url})` : '';
+						const msg =
+							`${changeLine}${urlLine}` +
+							`\n\nThis change is not submittable. This may be due to relation chain dependencies.` +
+							(requirements.length > 0
+								? `\n\nRequirements:\n${requirements.map((r: any) => `- ${r.status}: ${r.fallback_text}`).join('\n')}`
+								: '');
+						void window.showWarningMessage(msg, { modal: false });
+					}
+					continue;
+				}
+				const result = await api.submitWithDetails(change!.changeID);
+				if (result && result.success) {
+					submitSuccess++;
+					console.log(
+						`[BatchReview] Submitted change: ${change!.changeID}`
+					);
+				} else {
+					submitFail++;
+					const errMsg =
+						result && result.error ? result.error : 'Unknown error';
+					submitErrors.push(
+						`Failed to submit ${change!.changeID}: ${errMsg}`
+					);
+					console.warn(
+						`[BatchReview] Failed to submit change: ${change!.changeID}`,
+						result
+					);
+				}
+			} catch (err: any) {
+				submitFail++;
+				submitErrors.push(
+					`Exception for ${change!.changeID}: ${err?.message || err}`
+				);
+				console.error(
+					`[BatchReview] Exception submitting change: ${change!.changeID}`,
+					err
+				);
+			}
+		}
+		// Clear batch after submission (for UX, same as _handleSubmitBatch)
+		this._state.batchChanges = [];
+		await this._updateView();
 
-	   // Show summary
-	   const messages: string[] = [];
-	   if (plus2Success > 0) messages.push(`+2'd ${plus2Success} change(s)`);
-	   if (submitSuccess > 0) messages.push(`Submitted ${submitSuccess} change(s)`);
-	   if (submitFail > 0) messages.push(`${submitFail} submit failure(s)`);
+		// Show summary
+		const messages: string[] = [];
+		if (plus2Success > 0) messages.push(`+2'd ${plus2Success} change(s)`);
+		if (submitSuccess > 0)
+			messages.push(`Submitted ${submitSuccess} change(s)`);
+		if (submitFail > 0) messages.push(`${submitFail} submit failure(s)`);
 
-	   if (submitErrors.length > 0) {
-		   void window.showErrorMessage(
-			   `Failed to submit ${submitFail} change(s):\n${submitErrors.slice(0, 5).join('\n')}${submitErrors.length > 5 ? `\n...and ${submitErrors.length - 5} more` : ''}`
-		   );
-	   } else if (messages.length > 0) {
-		   void window.showInformationMessage(messages.join(', '));
-	   }
+		if (submitErrors.length > 0) {
+			void window.showErrorMessage(
+				`Failed to submit ${submitFail} change(s):\n${submitErrors.slice(0, 5).join('\n')}${submitErrors.length > 5 ? `\n...and ${submitErrors.length - 5} more` : ''}`
+			);
+		} else if (messages.length > 0) {
+			void window.showInformationMessage(messages.join(', '));
+		}
 	}
 
 	/**
@@ -668,8 +747,10 @@ class BatchReviewProvider implements Disposable {
 				(GerritAPIWith as any).DETAILED_LABELS
 			);
 			if (changeObj) {
-				(change as any).submittable = (changeObj as any).submittable ?? false;
-				(change as any).hasCodeReviewPlus2 = this._hasCodeReviewPlus2(changeObj);
+				(change as any).submittable =
+					(changeObj as any).submittable ?? false;
+				(change as any).hasCodeReviewPlus2 =
+					this._hasCodeReviewPlus2(changeObj);
 			}
 		}
 	}
@@ -732,15 +813,25 @@ class BatchReviewProvider implements Disposable {
 		let failureCount = 0;
 		const errors: string[] = [];
 
-			   // Map REST IDs to Gerrit Change-Ids (camelCase)
-			   const batchChangeIDToChangeId = Object.fromEntries(this._state.batchChanges.map(c => [c.changeID, c.changeId]));
-			   const changeIdToBatchChangeID = Object.fromEntries(this._state.batchChanges.map(c => [c.changeId, c.changeID]));
-			   const batchChangeIds = this._state.batchChanges.map(c => c.changeId);
-			   // Order by Gerrit Change-Id (camelCase)
-			   const orderedChangeIds = await getOrderedBatch(batchChangeIds);
-			   // Map back to REST IDs
-			   const orderedIDs = orderedChangeIds.map(id => changeIdToBatchChangeID[id]).filter(Boolean);
-			   const orderedChanges = orderedIDs.map(id => this._state.batchChanges.find(c => c.changeID === id)).filter(Boolean);
+		// Map REST IDs to Gerrit Change-Ids (camelCase)
+		const batchChangeIDToChangeId = Object.fromEntries(
+			this._state.batchChanges.map((c) => [c.changeID, c.changeId])
+		);
+		const changeIdToBatchChangeID = Object.fromEntries(
+			this._state.batchChanges.map((c) => [c.changeId, c.changeID])
+		);
+		const batchChangeIds = this._state.batchChanges.map((c) => c.changeId);
+		// Order by Gerrit Change-Id (camelCase)
+		const orderedChangeIds = await getOrderedBatch(batchChangeIds);
+		// Map back to REST IDs
+		const orderedIDs = orderedChangeIds
+			.map((id) => changeIdToBatchChangeID[id])
+			.filter(Boolean);
+		const orderedChanges = orderedIDs
+			.map((id) =>
+				this._state.batchChanges.find((c) => c.changeID === id)
+			)
+			.filter(Boolean);
 
 		for (const change of orderedChanges) {
 			// Use the enhanced method with detailed error reporting
@@ -1048,47 +1139,60 @@ class BatchReviewProvider implements Disposable {
 		msg: BatchReviewWebviewMessage
 	): Promise<void> {
 		switch (msg.type) {
-					   case 'getChainInfo': {
-							   // msg.body.changeID is the REST id (project~branch~Ixxxx...)
-							   const { changeID } = msg.body;
-							   let gerritChangeId: string | undefined = undefined;
-							   // Try to find in batchChanges first
-							   const found = this._state.batchChanges.find(c => c.changeID === changeID);
-							   if (found) {
-								   gerritChangeId = found.changeId;
-							   } else {
-								   // If not found, fetch detail to get Gerrit Change-Id
-								   const api = await getAPI();
-								   if (api) {
-									   try {
-										   const detailResp = await api['_tryRequest']({
-											   path: `changes/${changeID}/detail/`,
-											   method: 'GET',
-										   });
-										   if (detailResp && api['_assertRequestSucceeded'](detailResp)) {
-											   const detailJson = api['_tryParseJSON']<{ change_id: string }>(detailResp.strippedBody);
-											   gerritChangeId = detailJson?.change_id;
-										   }
-									   } catch (err) {
-										   console.warn('[batchReview] Error fetching change detail for chain info', { changeID, err });
-									   }
-								   }
-							   }
-							   if (!gerritChangeId) {
-								   console.warn('[batchReview] No Gerrit Change-Id (changeId) found for chain info', { changeID });
-								   await this._panel?.webview.postMessage({
-									   type: 'chainInfo',
-									   body: { changeID, inChain: false },
-								   });
-								   break;
-							   }
-							   const info = await isChangeChained(gerritChangeId);
-							   await this._panel?.webview.postMessage({
-								   type: 'chainInfo',
-								   body: { changeID, ...info },
-							   });
-							   break;
-						   }
+			case 'getChainInfo': {
+				// msg.body.changeID is the REST id (project~branch~Ixxxx...)
+				const { changeID } = msg.body;
+				let gerritChangeId: string | undefined = undefined;
+				// Try to find in batchChanges first
+				const found = this._state.batchChanges.find(
+					(c) => c.changeID === changeID
+				);
+				if (found) {
+					gerritChangeId = found.changeId;
+				} else {
+					// If not found, fetch detail to get Gerrit Change-Id
+					const api = await getAPI();
+					if (api) {
+						try {
+							const detailResp = await api['_tryRequest']({
+								path: `changes/${changeID}/detail/`,
+								method: 'GET',
+							});
+							if (
+								detailResp &&
+								api['_assertRequestSucceeded'](detailResp)
+							) {
+								const detailJson = api['_tryParseJSON']<{
+									change_id: string;
+								}>(detailResp.strippedBody);
+								gerritChangeId = detailJson?.change_id;
+							}
+						} catch (err) {
+							console.warn(
+								'[batchReview] Error fetching change detail for chain info',
+								{ changeID, err }
+							);
+						}
+					}
+				}
+				if (!gerritChangeId) {
+					console.warn(
+						'[batchReview] No Gerrit Change-Id (changeId) found for chain info',
+						{ changeID }
+					);
+					await this._panel?.webview.postMessage({
+						type: 'chainInfo',
+						body: { changeID, inChain: false },
+					});
+					break;
+				}
+				const info = await isChangeChained(gerritChangeId);
+				await this._panel?.webview.postMessage({
+					type: 'chainInfo',
+					body: { changeID, ...info },
+				});
+				break;
+			}
 			case 'ready':
 				// On ready, load Incoming Reviews instead of Your Turn
 				await this._handleGetIncomingReviews();
@@ -1125,7 +1229,9 @@ class BatchReviewProvider implements Disposable {
 				break;
 			case 'inspectBatch':
 				// Method not implemented, show info or ignore
-				void window.showInformationMessage('inspectBatch is not implemented.');
+				void window.showInformationMessage(
+					'inspectBatch is not implemented.'
+				);
 				break;
 			case 'startAutomation':
 				await this._handleStartAutomation();
