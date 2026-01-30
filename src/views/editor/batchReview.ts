@@ -144,8 +144,8 @@ class BatchReviewProvider implements Disposable {
 			GerritAPIWith.DETAILED_ACCOUNTS,
 			GerritAPIWith.DETAILED_LABELS,
 		];
-		if ((GerritAPIWith as any).SUBMITTABLE) {
-			options.push((GerritAPIWith as any).SUBMITTABLE);
+		if ((GerritAPIWith as any).SUBMITTABLE as GerritAPIWith) {
+			options.push((GerritAPIWith as any).SUBMITTABLE as GerritAPIWith);
 		}
 		let subscription;
 		if (options.length > 0) {
@@ -397,7 +397,9 @@ class BatchReviewProvider implements Disposable {
 	 * Used for the dedicated +2 button.
 	 */
 	private async _handlePlus2All(): Promise<void> {
-		if (!this._panel) return;
+		if (!this._panel) {
+			return;
+		}
 		const api = await getAPI();
 		if (!api) {
 			void window.showErrorMessage('Gerrit API not available.');
@@ -553,7 +555,9 @@ class BatchReviewProvider implements Disposable {
 	 */
 	private async _handlePlus2AllAndSubmit(): Promise<void> {
 		console.log('[BatchReview] +2 & Submit combo button triggered');
-		if (!this._panel) return;
+		if (!this._panel) {
+			return;
+		}
 
 		const api = await getAPI();
 		if (!api) {
@@ -722,10 +726,15 @@ class BatchReviewProvider implements Disposable {
 
 		// Show summary
 		const messages: string[] = [];
-		if (plus2Success > 0) messages.push(`+2'd ${plus2Success} change(s)`);
-		if (submitSuccess > 0)
+		if (plus2Success > 0) {
+			messages.push(`+2'd ${plus2Success} change(s)`);
+		}
+		if (submitSuccess > 0) {
 			messages.push(`Submitted ${submitSuccess} change(s)`);
-		if (submitFail > 0) messages.push(`${submitFail} submit failure(s)`);
+		}
+		if (submitFail > 0) {
+			messages.push(`${submitFail} submit failure(s)`);
+		}
 
 		if (submitErrors.length > 0) {
 			void window.showErrorMessage(
@@ -743,8 +752,7 @@ class BatchReviewProvider implements Disposable {
 		for (const change of this._state.batchChanges) {
 			const changeObj = await GerritChange.getChangeOnce(
 				change.changeID,
-				(GerritAPIWith as any).SUBMITTABLE,
-				(GerritAPIWith as any).DETAILED_LABELS
+				[GerritAPIWith.SUBMITTABLE, GerritAPIWith.DETAILED_LABELS]
 			);
 			if (changeObj) {
 				(change as any).submittable =
@@ -1054,10 +1062,14 @@ class BatchReviewProvider implements Disposable {
 		);
 
 		if (diffCommand) {
-			if (Array.isArray(diffCommand.arguments)) {
+			if (
+				Array.isArray(diffCommand.arguments) &&
+				diffCommand.arguments.every((arg) => typeof arg !== 'undefined')
+			) {
+				// Optionally, you can add a more specific type check here if you know the expected argument types
 				await vscodeCommands.executeCommand(
 					diffCommand.command,
-					...diffCommand.arguments
+					...(diffCommand.arguments as unknown[])
 				);
 			} else {
 				await vscodeCommands.executeCommand(diffCommand.command);

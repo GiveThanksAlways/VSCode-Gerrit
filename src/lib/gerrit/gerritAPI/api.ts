@@ -62,6 +62,7 @@ export enum GerritAPIWith {
 	CURRENT_FILES = 'CURRENT_FILES',
 	ALL_FILES = 'ALL_FILES',
 	ALL_REVISIONS = 'ALL_REVISIONS',
+	SUBMITTABLE = 'SUBMITTABLE',
 }
 
 interface ResponseWithBody<T> extends Response<T> {
