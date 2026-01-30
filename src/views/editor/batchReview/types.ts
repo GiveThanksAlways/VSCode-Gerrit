@@ -21,7 +21,8 @@ export interface BatchReviewFileInfo {
 }
 
 export interface BatchReviewChange {
-	changeID: string;
+	changeID: string; // Gerrit REST id (project~branch~Ixxxx)
+	changeId: string; // Gerrit Change-Id (Ixxxx...)
 	number: number;
 	subject: string;
 	project: string;
@@ -52,4 +53,8 @@ export interface BatchReviewChange {
 	 * Whether this change has Code-Review +2.
 	 */
 	hasCodeReviewPlus2?: boolean;
+	/**
+	 * Gerrit web URL for this change (if available)
+	 */
+	gerritUrl?: string;
 }

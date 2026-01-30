@@ -1,3 +1,19 @@
+export interface GetChainInfoMessage {
+	type: 'getChainInfo';
+	body: {
+		changeID: string;
+	};
+}
+
+export interface ChainInfoMessage {
+	type: 'chainInfo';
+	body: {
+		changeID: string;
+		inChain: boolean;
+		position?: number;
+		length?: number;
+	};
+}
 import { BatchReviewState } from './state';
 
 export interface GetIncomingReviewsMessage {
@@ -149,6 +165,8 @@ export type BatchReviewWebviewMessage =
 	| SetFileViewModeMessage
 	| OpenChangeOnlineMessage
 	| ReorderChangesMessage
+	| GetChainInfoMessage
+	| ChainInfoMessage
 	| {
 			type: 'batchVoteSuccess';
 			body: {

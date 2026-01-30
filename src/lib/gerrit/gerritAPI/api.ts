@@ -25,7 +25,6 @@ import got, {
 	PromiseCookieJar,
 	RequestError,
 	Response,
-	RequestError,
 } from 'got/dist/source';
 import { fileCache } from '../../../views/activityBar/changes/changeTreeView/file/fileCache';
 import {
