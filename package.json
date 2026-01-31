@@ -987,6 +987,14 @@
 		"views": {
 			"gerrit": [
 				{
+					"id": "gerrit:batchReviewButton",
+					"name": "Batch Review",
+					"type": "webview",
+					"visibility": "visible",
+					"initialSize": 1,
+					"when": "gerrit:isUsingGerrit"
+				},
+				{
 					"id": "gerrit:changeExplorer",
 					"name": "Changes",
 					"type": "tree",
@@ -1497,7 +1505,6 @@
 		"@vscode/test-electron": "^1.6.2",
 		"@vscode/webview-ui-toolkit": "^0.8.4",
 		"esbuild": "^0.14.2",
-		"eslint": "^8.3.0",
 		"eslint-plugin-node": "^11.1.0",
 		"eslint-plugin-react": "^7.27.1",
 		"eslint-plugin-react-hooks": "^4.3.0",
@@ -1519,6 +1526,7 @@
 		"vscode-generate-package-json": "1.2.2"
 	},
 	"dependencies": {
+		"eslint": "^8.3.0",
 		"gitdiff-parser": "^0.2.2",
 		"got": "^11.8.5"
 	}

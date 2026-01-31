@@ -23,6 +23,7 @@ import { PATCHSET_LEVEL_KEY } from '../../../views/activityBar/changes/changeTre
 import got, {
 	OptionsOfTextResponseBody,
 	PromiseCookieJar,
+	RequestError,
 	Response,
 } from 'got/dist/source';
 import { fileCache } from '../../../views/activityBar/changes/changeTreeView/file/fileCache';
@@ -61,6 +62,7 @@ export enum GerritAPIWith {
 	CURRENT_FILES = 'CURRENT_FILES',
 	ALL_FILES = 'ALL_FILES',
 	ALL_REVISIONS = 'ALL_REVISIONS',
+	SUBMITTABLE = 'SUBMITTABLE',
 }
 
 interface ResponseWithBody<T> extends Response<T> {
@@ -1479,6 +1481,272 @@ export class GerritAPI {
 		}
 
 		return json.status === 'MERGED';
+	}
+
+	/**
+	 * Submit a change with detailed error information.
+	 * Unlike submit(), this returns detailed error messages for dependency/conflict issues.
+	 */
+	public async submitWithDetails(
+		changeID: string
+	): Promise<{ success: boolean; error?: string }> {
+		const { url } = this._getUrlAndParams({
+			path: `changes/${changeID}/submit`,
+			method: 'POST',
+		});
+
+		if (!url) {
+			return { success: false, error: 'No URL configured' };
+		}
+
+		try {
+			const response = await got(url, {
+				method: 'POST',
+				body: JSON.stringify({}),
+				cookieJar: this._getCookieJar({ method: 'POST', path: '' }),
+				headers: this._headers(true),
+			});
+
+			const body = this._stripMagicPrefix(response.body);
+			const json = this._tryParseJSON<{ status?: string }>(body);
+
+			if (json?.status === 'MERGED') {
+				return { success: true };
+			}
+
+			return { success: false, error: 'Change was not merged' };
+		} catch (e) {
+			const err = e as {
+				response?: { body?: string; statusCode?: number };
+				message?: string;
+			};
+
+			// Parse the error body for detailed Gerrit error messages
+			let errorMessage = err.message || 'Unknown error';
+			if (err.response?.body) {
+				const body = this._stripMagicPrefix(err.response.body);
+				// Gerrit returns plain text error messages for 409 Conflict
+				if (body && !body.startsWith('{')) {
+					errorMessage = body;
+				} else {
+					const parsed = this._tryParseJSON<{ message?: string }>(
+						body
+					);
+					if (parsed?.message) {
+						errorMessage = parsed.message;
+					}
+				}
+			}
+
+			if (err.response?.statusCode) {
+				return {
+					success: false,
+					error: `HTTP ${err.response.statusCode}: ${errorMessage}`,
+				};
+			}
+
+			return { success: false, error: errorMessage };
+		}
+	}
+
+	/**
+	 * Set review with detailed error information.
+	 * Unlike setReview(), this returns detailed error messages for validation/conflict issues.
+	 */
+	public async setReviewWithDetails(
+		changeID: string,
+		revisionID: string,
+		options: {
+			message?: string;
+			resolved?: boolean;
+			labels?: Record<string, number>;
+			publishDrafts: boolean;
+			reviewers: (string | number)[];
+			cc: (string | number)[];
+		}
+	): Promise<{ success: boolean; error?: string }> {
+		const detail = await this.getChangeDetail(changeID);
+		const self = await this.getSelf();
+		if (!detail || !self) {
+			return { success: false, error: 'Could not get change details' };
+		}
+
+		const previousReviewers = detail.reviewers.filter(
+			(r) => !(r instanceof GerritUser) || r.accountID !== self.accountID
+		);
+		const previousCC = detail.cc;
+
+		const changes = this._getReviewerCCChanges(
+			previousReviewers,
+			previousCC,
+			options.reviewers ?? [],
+			options.cc ?? []
+		);
+
+		const { url } = this._getUrlAndParams({
+			path: `changes/${changeID}/revisions/${revisionID}/review`,
+			method: 'POST',
+		});
+
+		if (!url) {
+			return { success: false, error: 'No URL configured' };
+		}
+
+		try {
+			const response = await got(url, {
+				method: 'POST',
+				body: JSON.stringify(
+					optionalObjectProperty({
+						labels: options.labels,
+						comments: options.message
+							? {
+									[PATCHSET_LEVEL_KEY]: [
+										{
+											message: options.message,
+											unresolved: !(
+												options.resolved ?? true
+											),
+										},
+									],
+								}
+							: undefined,
+						drafts: options.publishDrafts
+							? 'PUBLISH_ALL_REVISIONS'
+							: 'KEEP',
+						remove_from_attention_set: changes.removed.map(
+							(id) => ({
+								user: id,
+								reason: 'Reviewer/CC removed',
+							})
+						),
+						reviewers: [
+							...changes.removed.map((id) => ({
+								reviewer: id,
+								state: 'REMOVED',
+							})),
+							...changes.addedToCC.map((id) => ({
+								reviewer: id,
+								state: 'CC',
+							})),
+							...changes.addedToReviewers.map((id) => ({
+								reviewer: id,
+								state: 'REVIEWER',
+							})),
+						],
+						ready: detail.isWip,
+					})
+				),
+				cookieJar: this._getCookieJar({ method: 'POST', path: '' }),
+				headers: this._headers(true),
+			});
+
+			if (response.statusCode >= 200 && response.statusCode < 300) {
+				return { success: true };
+			}
+
+			return { success: false, error: `HTTP ${response.statusCode}` };
+		} catch (e) {
+			const err = e as {
+				response?: { body?: string; statusCode?: number };
+				message?: string;
+			};
+
+			// Parse the error body for detailed Gerrit error messages
+			let errorMessage = err.message || 'Unknown error';
+			if (err.response?.body) {
+				const body = this._stripMagicPrefix(err.response.body);
+				if (body && !body.startsWith('{')) {
+					errorMessage = body;
+				} else {
+					const parsed = this._tryParseJSON<{ message?: string }>(
+						body
+					);
+					if (parsed?.message) {
+						errorMessage = parsed.message;
+					}
+				}
+			}
+
+			if (err.response?.statusCode) {
+				return {
+					success: false,
+					error: `HTTP ${err.response.statusCode}: ${errorMessage}`,
+				};
+			}
+
+			return { success: false, error: errorMessage };
+		}
+	}
+
+	/**
+	 * Set only labels on a change without modifying reviewers or CC.
+	 * This is a simpler version of setReview that avoids the "remove reviewer not permitted" error.
+	 */
+	public async setLabelsOnly(
+		changeID: string,
+		revisionID: string,
+		labels: Record<string, number>
+	): Promise<{ success: boolean; error?: string }> {
+		const { url } = this._getUrlAndParams({
+			path: `changes/${changeID}/revisions/${revisionID}/review`,
+			method: 'POST',
+		});
+
+		if (!url) {
+			return { success: false, error: 'No URL configured' };
+		}
+
+		try {
+			const response = await got(url, {
+				method: 'POST',
+				body: JSON.stringify({
+					labels: labels,
+				}),
+				cookieJar: this._getCookieJar({ method: 'POST', path: '' }),
+				headers: this._headers(true),
+			});
+
+			if (response.statusCode >= 200 && response.statusCode < 300) {
+				return { success: true };
+			}
+
+			return {
+				success: false,
+				error: `HTTP ${response.statusCode}: ${response.statusMessage}`,
+			};
+		} catch (err) {
+			if (!(err instanceof RequestError) || !err.response) {
+				return { success: false, error: String(err) };
+			}
+
+			// Parse the error body for detailed Gerrit error messages
+			let errorMessage = err.message || 'Unknown error';
+			if (err.response?.body) {
+				const body =
+					typeof err.response.body === 'string'
+						? this._stripMagicPrefix(err.response.body)
+						: '';
+				if (body && !body.startsWith('{')) {
+					errorMessage = body;
+				} else if (body) {
+					const parsed = this._tryParseJSON<{ message?: string }>(
+						body
+					);
+					if (parsed?.message) {
+						errorMessage = parsed.message;
+					}
+				}
+			}
+
+			if (err.response?.statusCode) {
+				return {
+					success: false,
+					error: `HTTP ${err.response.statusCode}: ${errorMessage}`,
+				};
+			}
+
+			return { success: false, error: errorMessage };
+		}
 	}
 
 	public async getGerritVersion(): Promise<VersionNumber | null> {

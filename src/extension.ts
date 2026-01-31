@@ -7,6 +7,7 @@ import {
 	testEnableStreamEvents,
 } from './lib/stream-events/stream-events';
 import { getReviewedStatusDecorationProvider } from './providers/reviewedStatusDecorationProvider';
+import { getOrCreateBatchReviewButtonProvider } from './views/activityBar/batchReviewButton';
 import { FileModificationStatusProvider } from './providers/fileModificationStatusProvider';
 import { showQuickCheckoutStatusBarIcons } from './views/statusBar/quickCheckoutStatusBar';
 import { getOrCreateQuickCheckoutTreeProvider } from './views/activityBar/quickCheckout';
@@ -127,6 +128,18 @@ export async function activate(context: ExtensionContext): Promise<void> {
 	// Register tree views
 	context.subscriptions.push(getOrCreateChangesTreeProvider(gerritRepo));
 	context.subscriptions.push(getOrCreateQuickCheckoutTreeProvider());
+	// Register the Batch Review Button at top of sidebar
+	context.subscriptions.push(
+		window.registerWebviewViewProvider(
+			'gerrit:batchReviewButton',
+			getOrCreateBatchReviewButtonProvider(context),
+			{
+				webviewOptions: {
+					retainContextWhenHidden: true,
+				},
+			}
+		)
+	);
 	context.subscriptions.push(
 		window.registerWebviewViewProvider(
 			'gerrit:review',

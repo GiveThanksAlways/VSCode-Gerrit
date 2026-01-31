@@ -48,6 +48,7 @@ import { fetchMoreTreeItemEntries } from '../views/activityBar/changes/fetchMore
 import { openCurrentChangeOnline } from '../lib/commandHandlers/openCurrentChangeOnline';
 import { clearSearchResults, search } from '../views/activityBar/search/search';
 import { ChangeTreeView } from '../views/activityBar/changes/changeTreeView';
+import { getOrCreateBatchReviewProvider } from '../views/editor/batchReview';
 import { QuickCheckoutTreeEntry } from '../views/activityBar/quickCheckout';
 import { listenForStreamEvents } from '../lib/stream-events/stream-events';
 import { GerritCommentBase } from '../lib/gerrit/gerritAPI/gerritComment';
@@ -55,7 +56,6 @@ import { getChangeIDFromCheckoutString, gitReview } from '../lib/git/git';
 import { createAutoRegisterCommand } from 'vscode-generate-package-json';
 import { enterCredentials } from '../lib/credentials/enterCredentials';
 import { rebaseOntoParent, recursiveRebase } from '../lib/git/rebase';
-import { getOrCreateBatchReviewProvider } from '../views/editor/batchReview';
 import { CommentThread, ExtensionContext, Uri, window } from 'vscode';
 import { GerritChange } from '../lib/gerrit/gerritAPI/gerritChange';
 import { focusChange } from '../lib/commandHandlers/focusChange';

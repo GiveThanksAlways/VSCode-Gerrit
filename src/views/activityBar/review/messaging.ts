@@ -62,6 +62,9 @@ export type ReviewWebviewMessage =
 	| {
 			type: 'backToCurrent';
 	  }
+	| {
+			type: 'openBatchReview';
+	  }
 	| GetPeopleMessage
 	| CommentUpdateMessage
 	| PublishMessage
