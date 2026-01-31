@@ -74,11 +74,6 @@ export const BatchReviewPane: VFC = () => {
 		return () => window.removeEventListener('message', messageHandler);
 	}, []);
 
-	// Validate chain when batch changes
-	useEffect(() => {
-		validateChain();
-	}, [state.batchChanges, chainInfoMap]);
-
 	/**
 	 * Validate the chain status of batch items.
 	 * Checks if:
@@ -173,6 +168,12 @@ export const BatchReviewPane: VFC = () => {
 
 		setChainWarnings(warnings);
 	}, [state.batchChanges, chainInfoMap]);
+
+	// Validate chain when batch changes or chain info updates
+	useEffect(() => {
+		validateChain();
+	}, [validateChain]);
+
 
 	const handleYourTurnSelection = (changeID: string, selected: boolean) => {
 		const newSet = new Set(selectedYourTurn);
