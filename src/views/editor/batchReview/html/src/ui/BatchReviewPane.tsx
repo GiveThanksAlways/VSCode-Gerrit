@@ -1006,7 +1006,7 @@ const PeoplePicker: VFC<PeoplePickerProps> = ({
 
 export const BatchReviewPane: VFC = () => {
 	const [state, setState] = useState<BatchReviewState>({
-		yourTurnChanges: [],
+		incomingChanges: [],
 		batchChanges: [],
 		loading: true,
 	});
@@ -1065,7 +1065,7 @@ export const BatchReviewPane: VFC = () => {
 	const handleYourTurnSelectAll = (selected: boolean) => {
 		if (selected) {
 			setSelectedYourTurn(
-				new Set(state.yourTurnChanges.map((c) => c.changeID))
+				new Set(state.incomingChanges.map((c) => c.changeID))
 			);
 		} else {
 			setSelectedYourTurn(new Set());
@@ -1335,7 +1335,7 @@ export const BatchReviewPane: VFC = () => {
 			<div className="lists-container">
 				<div className="your-turn-section">
 					<ChangeList
-						changes={state.yourTurnChanges}
+						changes={state.incomingChanges}
 						selectedChanges={selectedYourTurn}
 						onSelectionChange={handleYourTurnSelection}
 						onSelectAll={handleYourTurnSelectAll}

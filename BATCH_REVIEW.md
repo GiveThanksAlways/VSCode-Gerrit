@@ -106,7 +106,7 @@ provider.removeFromBatch(['change-id-1']);
 
 // Inspect batch contents
 const batchChanges = provider.getBatchChanges();
-const yourTurnChanges = provider.getYourTurnChanges();
+const incomingChanges = provider.getIncomingChanges();
 
 // NOTE: AI agents CANNOT submit votes - that's human-only!
 ```
@@ -389,7 +389,7 @@ Transitions:
 ```typescript
 // Main state flows through single state object
 interface BatchReviewState {
-  yourTurnChanges: BatchReviewChange[];
+  incomingChanges: BatchReviewChange[];
   batchChanges: BatchReviewChange[];
   loading: boolean;
   error?: string;

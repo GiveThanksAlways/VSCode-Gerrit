@@ -49,7 +49,7 @@ class BatchReviewProvider implements Disposable {
 	private _panel: TypedWebviewPanel<BatchReviewWebviewMessage> | null = null;
 	private readonly _disposables: Disposable[] = [];
 	private _state: BatchReviewState = {
-		yourTurnChanges: [],
+		incomingChanges: [],
 		batchChanges: [],
 		loading: false,
 		fileViewMode: 'tree',
@@ -111,7 +111,7 @@ class BatchReviewProvider implements Disposable {
 				}
 				return {
 					changeId: change.change_id, // Gerrit Change-Id (Ixxxx...)
-					changeID: change.changeID, // REST id (test_gpg~251200)
+					changeID: `${change.project}~${change.branch}~${change.change_id}`,
 					number: change.number,
 					subject: change.subject,
 					project: change.project,
@@ -193,7 +193,7 @@ class BatchReviewProvider implements Disposable {
 
 				return {
 					changeId: change.change_id, // Gerrit Change-Id (Ixxxx...)
-					changeID: change.changeID, // REST id (test_gpg~251200)
+					changeID: `${change.project}~${change.branch}~${change.change_id}`, // REST id (project~branch~Ixxxx)
 					number: change.number,
 					subject: change.subject,
 					project: change.project,
@@ -251,7 +251,7 @@ class BatchReviewProvider implements Disposable {
 		const batchChangeIDs = new Set(
 			this._state.batchChanges.map((c) => c.changeID)
 		);
-		this._state.yourTurnChanges = changes.filter(
+		this._state.incomingChanges = changes.filter(
 			(change) => !batchChangeIDs.has(change.changeID)
 		);
 
@@ -273,7 +273,7 @@ class BatchReviewProvider implements Disposable {
 		const batchChangeIDs = new Set(
 			this._state.batchChanges.map((c) => c.changeID)
 		);
-		this._state.yourTurnChanges = changes.filter(
+		this._state.incomingChanges = changes.filter(
 			(change) => !batchChangeIDs.has(change.changeID)
 		);
 
@@ -290,101 +290,111 @@ class BatchReviewProvider implements Disposable {
 			scores,
 		});
 
-		// Log current batchChanges for debugging
-		console.log(
-			'[BatchReview] batchChanges before add:',
-			this._state.batchChanges.map((c) => c.changeID)
+		// Find the actual BatchReviewChange objects in incomingChanges
+		const changesToAdd = this._state.incomingChanges.filter((change) =>
+			msg.body.changeIDs.includes(change.changeID)
 		);
 
-		// If yourTurnChanges is still present, log if it is empty (for migration debugging)
-		if (this._state.yourTurnChanges !== undefined) {
-			console.log(
-				'[BatchReview] yourTurnChanges exists and has length:',
-				this._state.yourTurnChanges.length
-			);
+		console.log(
+			'[BatchReview] Changes to add:',
+			changesToAdd.map((c) => ({
+				changeID: c.changeID,
+				score: c.score,
+			}))
+		);
+
+		// Remove from incomingChanges
+		this._state.incomingChanges = this._state.incomingChanges.filter(
+			(change) => !msg.body.changeIDs.includes(change.changeID)
+		);
+
+		console.log(
+			'[BatchReview] incomingChanges after removal:',
+			this._state.incomingChanges.map((c) => c.changeID)
+		);
+
+		// Prepare changes to insert (avoid duplicates, apply scores)
+		const newChanges: BatchReviewChange[] = [];
+		for (const change of changesToAdd) {
+			if (
+				!this._state.batchChanges.some(
+					(c) => c.changeID === change.changeID
+				)
+			) {
+				// Always set score property, even if not present
+				if (scores && scores[change.changeID] !== undefined) {
+					console.log(
+						`[BatchReview] Setting score for ${change.changeID}:`,
+						scores[change.changeID]
+					);
+					change.score = Number(scores[change.changeID]);
+				} else {
+					// If no score provided, ensure score is undefined or 0
+					change.score = change.score ?? undefined;
+				}
+				newChanges.push(change);
+			} else {
+				console.log(
+					`[BatchReview] Skipping duplicate in batch: ${change.changeID}`
+				);
+			}
 		}
 
-		// Add directly to batchChanges (since yourTurnChanges is removed)
-		const changesToAdd: BatchReviewChange[] = msg.body.changeIDs.reduce(
-			(arr: BatchReviewChange[], changeID) => {
-				let existing = this._state.batchChanges.find(
-					(c) => c.changeID === changeID
-				);
-				if (existing) {
-					return arr; // skip duplicates
-				}
-				arr.push({
-					changeID,
-					changeId: changeID.split('~').pop() || changeID,
-					number: 0,
-					subject: '(unknown)',
-					project: '(unknown)',
-					branch: '(unknown)',
-					owner: {
-						name: '(unknown)',
-						accountID: 0,
-					},
-					updated: '',
-					score:
-						scores && scores[changeID] !== undefined
-							? scores[changeID]
-							: undefined,
-				});
-				return arr;
-			},
-			[]
+		console.log(
+			'[BatchReview] newChanges to insert into batch:',
+			newChanges.map((c) => ({
+				changeID: c.changeID,
+				score: c.score,
+			}))
 		);
-
-		console.log('[BatchReview] New changes to insert:', changesToAdd);
 
 		// Insert at dropIndex if provided, otherwise append and sort by score
 		if (
 			msg.body.dropIndex !== undefined &&
 			msg.body.dropIndex >= 0 &&
-			changesToAdd.length > 0
+			newChanges.length > 0
 		) {
 			const insertAt = Math.min(
 				msg.body.dropIndex,
 				this._state.batchChanges.length
 			);
 			console.log(`[BatchReview] Inserting at index ${insertAt}`);
-			this._state.batchChanges.splice(insertAt, 0, ...changesToAdd);
+			this._state.batchChanges.splice(insertAt, 0, ...newChanges);
 		} else {
-			// Append and sort by score when no position specified
-			this._state.batchChanges.push(...changesToAdd);
+			this._state.batchChanges.push(...newChanges);
 			this._state.batchChanges.sort((a, b) => {
 				const scoreA = a.score ?? 0;
 				const scoreB = b.score ?? 0;
 				return scoreB - scoreA;
 			});
-			console.log(
-				'[BatchReview] Batch changes after sort:',
-				this._state.batchChanges.map((c) => ({
-					changeID: c.changeID,
-					score: c.score,
-				}))
-			);
 		}
 
+		// Log state after processing
+		console.log('[BatchReview] State after add:', {
+			incoming: this._state.incomingChanges.map((c) => c.changeID),
+			batch: this._state.batchChanges.map((c) => ({
+				changeID: c.changeID,
+				score: c.score,
+			})),
+		});
+
 		// Fetch labels if this is the first item added to batch
-		if (changesToAdd.length > 0 && !this._state.labels) {
-			console.log('[BatchReview] Fetching labels for first batch item.');
+		if (newChanges.length > 0 && !this._state.labels) {
 			await this._fetchLabels();
 		}
 
-		console.log(
-			'[BatchReview] Final batchChanges:',
-			this._state.batchChanges.map((c) => ({
-				changeID: c.changeID,
-				score: c.score,
-			}))
-		);
 		await this._updateView();
 	}
 
 	private async _handleRemoveFromBatch(
 		msg: RemoveFromBatchMessage
 	): Promise<void> {
+		console.log(
+			'[BatchReview] incomingChanges IDs:',
+			this._state.incomingChanges.map((c) => c.changeID)
+		);
+		console.log('[BatchReview] msg.body.changeIDs:', msg.body.changeIDs);
+
 		const changesToRemove = this._state.batchChanges.filter((change) =>
 			msg.body.changeIDs.includes(change.changeID)
 		);
@@ -397,7 +407,7 @@ class BatchReviewProvider implements Disposable {
 		// Filter out duplicates before adding back to yourTurn
 		const newChanges = changesToRemove.filter(
 			(change) =>
-				!this._state.yourTurnChanges.some(
+				!this._state.incomingChanges.some(
 					(c) => c.changeID === change.changeID
 				)
 		);
@@ -410,11 +420,11 @@ class BatchReviewProvider implements Disposable {
 		) {
 			const insertAt = Math.min(
 				msg.body.dropIndex,
-				this._state.yourTurnChanges.length
+				this._state.incomingChanges.length
 			);
-			this._state.yourTurnChanges.splice(insertAt, 0, ...newChanges);
+			this._state.incomingChanges.splice(insertAt, 0, ...newChanges);
 		} else {
-			this._state.yourTurnChanges.push(...newChanges);
+			this._state.incomingChanges.push(...newChanges);
 		}
 
 		await this._updateView();
@@ -424,11 +434,11 @@ class BatchReviewProvider implements Disposable {
 		// Move all batch changes back to yourTurn
 		for (const change of this._state.batchChanges) {
 			if (
-				!this._state.yourTurnChanges.some(
+				!this._state.incomingChanges.some(
 					(c) => c.changeID === change.changeID
 				)
 			) {
-				this._state.yourTurnChanges.push(change);
+				this._state.incomingChanges.push(change);
 			}
 		}
 		this._state.batchChanges = [];
@@ -978,7 +988,7 @@ class BatchReviewProvider implements Disposable {
 		const changeID = msg.body.changeID;
 
 		// Find the index of change in either yourTurn or batch
-		let changeIndex = this._state.yourTurnChanges.findIndex(
+		let changeIndex = this._state.incomingChanges.findIndex(
 			(c) => c.changeID === changeID
 		);
 		let changeList: 'yourTurn' | 'batch' = 'yourTurn';
@@ -1024,16 +1034,16 @@ class BatchReviewProvider implements Disposable {
 
 		// Create a new change object with files info (immutable update)
 		if (changeList === 'yourTurn') {
-			const existingChange = this._state.yourTurnChanges[changeIndex];
+			const existingChange = this._state.incomingChanges[changeIndex];
 			const updatedChange = {
 				...existingChange,
 				files,
 				filesLoaded: true,
 			};
-			this._state.yourTurnChanges = [
-				...this._state.yourTurnChanges.slice(0, changeIndex),
+			this._state.incomingChanges = [
+				...this._state.incomingChanges.slice(0, changeIndex),
 				updatedChange,
-				...this._state.yourTurnChanges.slice(changeIndex + 1),
+				...this._state.incomingChanges.slice(changeIndex + 1),
 			];
 		} else {
 			const existingChange = this._state.batchChanges[changeIndex];
@@ -1349,7 +1359,7 @@ class BatchReviewProvider implements Disposable {
 		const targetArray =
 			targetList === 'batch'
 				? this._state.batchChanges
-				: this._state.yourTurnChanges;
+				: this._state.incomingChanges;
 
 		// Build a set of IDs being moved
 		const movingSet = new Set(changeIDs);
@@ -1386,7 +1396,7 @@ class BatchReviewProvider implements Disposable {
 		if (targetList === 'batch') {
 			this._state.batchChanges = newArray;
 		} else {
-			this._state.yourTurnChanges = newArray;
+			this._state.incomingChanges = newArray;
 		}
 
 		await this._updateView();
@@ -1477,7 +1487,7 @@ class BatchReviewProvider implements Disposable {
 	}
 
 	public getYourTurnChanges(): BatchReviewChange[] {
-		return [...this._state.yourTurnChanges];
+		return [...this._state.incomingChanges];
 	}
 
 	public dispose(): void {

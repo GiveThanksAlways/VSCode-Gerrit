@@ -22,7 +22,7 @@ export interface BatchReviewLabel {
 }
 
 export interface BatchReviewState {
-	yourTurnChanges: BatchReviewChange[];
+	incomingChanges: BatchReviewChange[];
 	batchChanges: BatchReviewChange[];
 	loading: boolean;
 	/** Suggested reviewers for autocomplete */
