@@ -285,57 +285,100 @@ class BatchReviewProvider implements Disposable {
 		msg: AddToBatchMessage,
 		scores?: ScoreMap
 	): Promise<void> {
-		const changesToAdd = this._state.yourTurnChanges.filter((change) =>
-			msg.body.changeIDs.includes(change.changeID)
+		console.log('[BatchReview] _handleAddToBatch called with:', {
+			changeIDs: msg.body.changeIDs,
+			scores,
+		});
+
+		// Log current batchChanges for debugging
+		console.log(
+			'[BatchReview] batchChanges before add:',
+			this._state.batchChanges.map((c) => c.changeID)
 		);
 
-		// Remove from yourTurn and add to batch (avoid duplicates)
-		this._state.yourTurnChanges = this._state.yourTurnChanges.filter(
-			(change) => !msg.body.changeIDs.includes(change.changeID)
-		);
-
-		// Prepare changes to insert (filter duplicates and apply scores)
-		const newChanges: typeof changesToAdd = [];
-		for (const change of changesToAdd) {
-			if (
-				!this._state.batchChanges.some(
-					(c) => c.changeID === change.changeID
-				)
-			) {
-				// Apply score if provided
-				if (scores && scores[change.changeID] !== undefined) {
-					change.score = scores[change.changeID];
-				}
-				newChanges.push(change);
-			}
+		// If yourTurnChanges is still present, log if it is empty (for migration debugging)
+		if (this._state.yourTurnChanges !== undefined) {
+			console.log(
+				'[BatchReview] yourTurnChanges exists and has length:',
+				this._state.yourTurnChanges.length
+			);
 		}
+
+		// Add directly to batchChanges (since yourTurnChanges is removed)
+		const changesToAdd: BatchReviewChange[] = msg.body.changeIDs.reduce(
+			(arr: BatchReviewChange[], changeID) => {
+				let existing = this._state.batchChanges.find(
+					(c) => c.changeID === changeID
+				);
+				if (existing) {
+					return arr; // skip duplicates
+				}
+				arr.push({
+					changeID,
+					changeId: changeID.split('~').pop() || changeID,
+					number: 0,
+					subject: '(unknown)',
+					project: '(unknown)',
+					branch: '(unknown)',
+					owner: {
+						name: '(unknown)',
+						accountID: 0,
+					},
+					updated: '',
+					score:
+						scores && scores[changeID] !== undefined
+							? scores[changeID]
+							: undefined,
+				});
+				return arr;
+			},
+			[]
+		);
+
+		console.log('[BatchReview] New changes to insert:', changesToAdd);
 
 		// Insert at dropIndex if provided, otherwise append and sort by score
 		if (
 			msg.body.dropIndex !== undefined &&
 			msg.body.dropIndex >= 0 &&
-			newChanges.length > 0
+			changesToAdd.length > 0
 		) {
 			const insertAt = Math.min(
 				msg.body.dropIndex,
 				this._state.batchChanges.length
 			);
-			this._state.batchChanges.splice(insertAt, 0, ...newChanges);
+			console.log(`[BatchReview] Inserting at index ${insertAt}`);
+			this._state.batchChanges.splice(insertAt, 0, ...changesToAdd);
 		} else {
 			// Append and sort by score when no position specified
-			this._state.batchChanges.push(...newChanges);
+			this._state.batchChanges.push(...changesToAdd);
 			this._state.batchChanges.sort((a, b) => {
 				const scoreA = a.score ?? 0;
 				const scoreB = b.score ?? 0;
 				return scoreB - scoreA;
 			});
+			console.log(
+				'[BatchReview] Batch changes after sort:',
+				this._state.batchChanges.map((c) => ({
+					changeID: c.changeID,
+					score: c.score,
+				}))
+			);
 		}
 
 		// Fetch labels if this is the first item added to batch
 		if (changesToAdd.length > 0 && !this._state.labels) {
+			console.log('[BatchReview] Fetching labels for first batch item.');
 			await this._fetchLabels();
 		}
 
+		console.log(
+			'[BatchReview] Final batchChanges:',
+			this._state.batchChanges.map((c) => ({
+				changeID: c.changeID,
+				score: c.score,
+			}))
+		);
 		await this._updateView();
 	}
 
@@ -1086,7 +1129,6 @@ class BatchReviewProvider implements Disposable {
 		if (!this._apiServer) {
 			this._apiServer = createBatchReviewApiServer({
 				getBatch: () => this.getBatchChanges(),
-				getYourTurn: () => this.getYourTurnChanges(),
 				addToBatch: (changeIDs, scores) =>
 					this.addToBatch(changeIDs, scores),
 				clearBatch: () => {

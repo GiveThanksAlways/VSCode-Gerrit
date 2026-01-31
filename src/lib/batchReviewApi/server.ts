@@ -31,7 +31,6 @@ export interface ScoreMap {
 
 export interface BatchReviewApiCallbacks {
 	getBatch: () => BatchReviewChange[];
-	getYourTurn: () => BatchReviewChange[];
 	addToBatch: (changeIDs: string[], scores?: ScoreMap) => void;
 	clearBatch: () => void;
 }
@@ -59,7 +58,6 @@ function validateChangeIDs(changeIDs: unknown[]): changeIDs is string[] {
  * - GET /batch — Returns the current batch list
  * - POST /batch — Adds changes to the batch list (body: { changeIDs: string[], scores?: { [changeID: string]: number } })
  * - DELETE /batch — Clears the batch list
- * - GET /your-turn — Returns the "Your Turn" changes list (read-only)
  * - GET /health — Health check endpoint
  *
  * @param callbacks Functions to interact with the batch review state
@@ -76,6 +74,8 @@ export function createBatchReviewApiServer(
 		req: http.IncomingMessage,
 		res: http.ServerResponse
 	): void => {
+		// Basic logging for all requests
+		console.log(`[BatchReviewAPI] ${req.method} ${req.url}`);
 		res.setHeader('Content-Type', 'application/json');
 
 		const url = req.url || '/';
@@ -104,6 +104,7 @@ export function createBatchReviewApiServer(
 			req.on('data', (chunk: Buffer) => {
 				bodySize += chunk.length;
 				if (bodySize > MAX_BODY_SIZE) {
+					console.error('[BatchReviewAPI] Request body too large');
 					res.writeHead(413);
 					res.end(
 						JSON.stringify({ error: 'Request body too large' })
@@ -114,12 +115,17 @@ export function createBatchReviewApiServer(
 				body += chunk.toString();
 			});
 			req.on('end', () => {
+				console.log(`[BatchReviewAPI] POST /batch body:`, body);
 				try {
 					const data = JSON.parse(body) as {
 						changeIDs?: unknown[];
 						scores?: Record<string, unknown>;
 					};
 					if (!data.changeIDs || !Array.isArray(data.changeIDs)) {
+						console.error(
+							'[BatchReviewAPI] Invalid request body: missing or invalid changeIDs',
+							data.changeIDs
+						);
 						res.writeHead(400);
 						res.end(
 							JSON.stringify({
@@ -129,6 +135,10 @@ export function createBatchReviewApiServer(
 						return;
 					}
 					if (!validateChangeIDs(data.changeIDs)) {
+						console.error(
+							'[BatchReviewAPI] Invalid changeIDs. All elements must be non-empty strings.',
+							data.changeIDs
+						);
 						res.writeHead(400);
 						res.end(
 							JSON.stringify({
@@ -156,6 +166,16 @@ export function createBatchReviewApiServer(
 							}
 						}
 					}
+					console.log(
+						'[BatchReviewAPI] Received changeIDs:',
+						data.changeIDs
+					);
+					if (scores) {
+						console.log(
+							'[BatchReviewAPI] Received scores:',
+							scores
+						);
+					}
 
 					callbacks.addToBatch(data.changeIDs, scores);
 					const batch = callbacks.getBatch();
@@ -166,7 +186,8 @@ export function createBatchReviewApiServer(
 							batch,
 						})
 					);
-				} catch {
+				} catch (err) {
+					console.error('[BatchReviewAPI] Invalid JSON body', err);
 					res.writeHead(400);
 					res.end(JSON.stringify({ error: 'Invalid JSON body' }));
 				}
@@ -187,14 +208,6 @@ export function createBatchReviewApiServer(
 			return;
 		}
 
-		// Route: GET /your-turn
-		if (url === '/your-turn' && method === 'GET') {
-			const yourTurn = callbacks.getYourTurn();
-			res.writeHead(200);
-			res.end(JSON.stringify({ yourTurn }));
-			return;
-		}
-
 		// 404 for unknown routes
 		res.writeHead(404);
 		res.end(
@@ -205,7 +218,6 @@ export function createBatchReviewApiServer(
 					'GET /batch',
 					'POST /batch',
 					'DELETE /batch',
-					'GET /your-turn',
 				],
 			})
 		);
