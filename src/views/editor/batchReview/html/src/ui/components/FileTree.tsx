@@ -1,5 +1,5 @@
-import React, { VFC, useState } from 'react';
 import { BatchReviewFileInfo } from '../../../../types';
+import React, { VFC, useState } from 'react';
 import { vscode } from '../../lib/api';
 
 // Type for file tree structure
@@ -12,7 +12,9 @@ export interface FileTreeNode {
 }
 
 // Build a tree structure from flat file list
-export function buildSimpleFileTree(files: BatchReviewFileInfo[]): FileTreeNode[] {
+export function buildSimpleFileTree(
+	files: BatchReviewFileInfo[]
+): FileTreeNode[] {
 	const folderMap = new Map<string, BatchReviewFileInfo[]>();
 
 	for (const file of files) {
@@ -170,7 +172,9 @@ export const TreeFileItem: VFC<TreeFileItemProps> = ({
 			<span className="file-path">{displayName}</span>
 			<span className="file-stats">
 				{file.linesInserted > 0 && (
-					<span className="file-additions">+{file.linesInserted}</span>
+					<span className="file-additions">
+						+{file.linesInserted}
+					</span>
 				)}
 				{file.linesDeleted > 0 && (
 					<span className="file-deletions">-{file.linesDeleted}</span>
@@ -211,7 +215,9 @@ export const FolderItem: VFC<FolderItemProps> = ({ node, changeID, depth }) => {
 			>
 				<span
 					className={`codicon ${
-						expanded ? 'codicon-chevron-down' : 'codicon-chevron-right'
+						expanded
+							? 'codicon-chevron-down'
+							: 'codicon-chevron-right'
 					}`}
 				></span>
 				<span className="codicon codicon-folder"></span>
@@ -270,7 +276,9 @@ export const FileItem: VFC<FileItemProps> = ({ file, changeID }) => {
 			<span className="file-path">{file.filePath}</span>
 			<span className="file-stats">
 				{file.linesInserted > 0 && (
-					<span className="file-additions">+{file.linesInserted}</span>
+					<span className="file-additions">
+						+{file.linesInserted}
+					</span>
 				)}
 				{file.linesDeleted > 0 && (
 					<span className="file-deletions">-{file.linesDeleted}</span>

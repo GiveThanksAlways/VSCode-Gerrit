@@ -1,17 +1,14 @@
 import {
-	BatchReviewState,
-	BatchReviewPerson,
-} from '../../../state';
-import React, { VFC, useState, useEffect, useCallback } from 'react';
-import { BatchReviewChange } from '../../../types';
-import { vscode } from '../lib/api';
-import {
 	ChangeList,
 	ScorePicker,
 	PeoplePicker,
 	SafetyArmedButton,
 	ChainInfo,
 } from './components';
+import { BatchReviewState, BatchReviewPerson } from '../../../state';
+import React, { VFC, useState, useEffect, useCallback } from 'react';
+import { BatchReviewChange } from '../../../types';
+import { vscode } from '../lib/api';
 
 export const BatchReviewPane: VFC = () => {
 	const [state, setState] = useState<BatchReviewState>({
@@ -131,26 +128,42 @@ export const BatchReviewPane: VFC = () => {
 				}
 			} else {
 				// Check for gaps in the sequence
+				let hasGap = false;
 				for (let i = 1; i < positions.length; i++) {
 					if (positions[i] !== positions[i - 1] + 1) {
 						warnings.push(
 							`Chain has a gap between positions ${positions[i - 1]} and ${positions[i]}. All changes in the chain must be included.`
 						);
+						hasGap = true;
 						break;
 					}
 				}
 
-				// Mark all changes in this chain with a color
-				const colorIndex = Array.from(chainGroups.keys()).indexOf(chainKey) % 5;
-				const colorClass = `chain-color-${colorIndex + 1}`;
-				for (const change of changes) {
-					const existing = chainInfoMap.get(change.changeId);
-					updatedChainInfo.set(change.changeId, {
-						...existing,
-						inChain: true,
-						hasUnsubmittedDependencies: false,
-						chainColorClass: colorClass,
-					});
+				if (hasGap) {
+					// Mark all changes in this chain as having unsubmitted dependencies (gap)
+					for (const change of changes) {
+						const existing = chainInfoMap.get(change.changeId);
+						updatedChainInfo.set(change.changeId, {
+							...existing,
+							inChain: true,
+							hasUnsubmittedDependencies: true,
+							chainColorClass: 'chain-warning-glow',
+						});
+					}
+				} else {
+					// Mark all changes in this chain with a color
+					const colorIndex =
+						Array.from(chainGroups.keys()).indexOf(chainKey) % 5;
+					const colorClass = `chain-color-${colorIndex + 1}`;
+					for (const change of changes) {
+						const existing = chainInfoMap.get(change.changeId);
+						updatedChainInfo.set(change.changeId, {
+							...existing,
+							inChain: true,
+							hasUnsubmittedDependencies: false,
+							chainColorClass: colorClass,
+						});
+					}
 				}
 			}
 		});
@@ -173,7 +186,6 @@ export const BatchReviewPane: VFC = () => {
 	useEffect(() => {
 		validateChain();
 	}, [validateChain]);
-
 
 	const handleYourTurnSelection = (changeID: string, selected: boolean) => {
 		const newSet = new Set(selectedYourTurn);
@@ -556,7 +568,9 @@ export const BatchReviewPane: VFC = () => {
 									<div className="submit-buttons compact">
 										<SafetyArmedButton
 											onClick={handlePlus2All}
-											disabled={state.batchChanges.length === 0}
+											disabled={
+												state.batchChanges.length === 0
+											}
 											buttonClassName="button-plus2"
 											icon="codicon-pass"
 											label={`+2 All (${state.batchChanges.length})`}
@@ -565,7 +579,9 @@ export const BatchReviewPane: VFC = () => {
 										/>
 										<SafetyArmedButton
 											onClick={handlePlus2AllAndSubmit}
-											disabled={state.batchChanges.length === 0}
+											disabled={
+												state.batchChanges.length === 0
+											}
 											buttonClassName="button-combo"
 											icon="codicon-rocket"
 											label="+2 & Submit"
@@ -603,7 +619,9 @@ export const BatchReviewPane: VFC = () => {
 									<PeoplePicker
 										label="Reviewers"
 										people={reviewers}
-										suggestions={state.suggestedReviewers ?? []}
+										suggestions={
+											state.suggestedReviewers ?? []
+										}
 										onChange={setReviewers}
 										onSearch={handleReviewerSearch}
 										placeholder="Add reviewers..."
@@ -637,7 +655,9 @@ export const BatchReviewPane: VFC = () => {
 												type="checkbox"
 												checked={resolved}
 												onChange={(e) =>
-													setResolved(e.target.checked)
+													setResolved(
+														e.target.checked
+													)
 												}
 											/>
 											<span>Resolved</span>
@@ -646,21 +666,29 @@ export const BatchReviewPane: VFC = () => {
 
 									{/* Score pickers */}
 									<div className="score-pickers">
-										{(state.labels ?? []).map((label, i) => (
-											<ScorePicker
-												key={i}
-												label={label}
-												value={labelValues[label.name] ?? 0}
-												onChange={handleLabelChange}
-											/>
-										))}
+										{(state.labels ?? []).map(
+											(label, i) => (
+												<ScorePicker
+													key={i}
+													label={label}
+													value={
+														labelValues[
+															label.name
+														] ?? 0
+													}
+													onChange={handleLabelChange}
+												/>
+											)
+										)}
 									</div>
 
 									{/* Submit buttons */}
 									<div className="submit-buttons">
 										<button
 											onClick={handleSubmitPatch}
-											disabled={state.batchChanges.length === 0}
+											disabled={
+												state.batchChanges.length === 0
+											}
 											className="button-submit"
 											title="Submit all changes in batch"
 										>
@@ -669,7 +697,9 @@ export const BatchReviewPane: VFC = () => {
 										</button>
 										<button
 											onClick={handleSendReview}
-											disabled={state.batchChanges.length === 0}
+											disabled={
+												state.batchChanges.length === 0
+											}
 											className="button-send"
 											title="Send review for all changes in batch"
 										>

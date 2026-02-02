@@ -1807,7 +1807,8 @@ input:focus-visible,
 }
 
 @keyframes armPulse {
-	0%, 100% {
+	0%,
+	100% {
 		box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.3);
 	}
 	50% {
@@ -1944,7 +1945,8 @@ input:focus-visible,
 }
 
 @keyframes chainWarningGlow {
-	0%, 100% {
+	0%,
+	100% {
 		box-shadow: inset 4px 0 12px -4px rgba(255, 87, 34, 0.4);
 	}
 	50% {
@@ -1959,7 +1961,8 @@ input:focus-visible,
 }
 
 @keyframes badgeWarning {
-	0%, 100% {
+	0%,
+	100% {
 		opacity: 1;
 	}
 	50% {

@@ -1,5 +1,5 @@
-import React, { VFC, useState, useEffect } from 'react';
 import { BatchReviewPerson, BatchReviewLabel } from '../../../../state';
+import React, { VFC, useState, useEffect } from 'react';
 
 interface ScorePickerProps {
 	label: BatchReviewLabel;
@@ -7,7 +7,11 @@ interface ScorePickerProps {
 	onChange: (name: string, value: number) => void;
 }
 
-export const ScorePicker: VFC<ScorePickerProps> = ({ label, value, onChange }) => {
+export const ScorePicker: VFC<ScorePickerProps> = ({
+	label,
+	value,
+	onChange,
+}) => {
 	const getScoreStyle = (score: string): string => {
 		const scoreNum = parseInt(score.trim(), 10);
 		const allValues = label.possibleValues.map((v) =>
@@ -119,7 +123,11 @@ export const PeoplePicker: VFC<PeoplePickerProps> = ({
 			<div className="picker-input-container">
 				<div className="selected-people">
 					{people.map((person) => (
-						<span key={person.id} className="person-chip" title={person.name}>
+						<span
+							key={person.id}
+							className="person-chip"
+							title={person.name}
+						>
 							{person.shortName}
 							{!person.locked && (
 								<button

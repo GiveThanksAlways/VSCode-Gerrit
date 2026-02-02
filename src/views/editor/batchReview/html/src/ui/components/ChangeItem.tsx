@@ -1,7 +1,7 @@
-import React, { VFC, useState, useEffect } from 'react';
 import { BatchReviewChange, BatchReviewFileInfo } from '../../../../types';
-import { vscode } from '../../lib/api';
 import { FolderItem, FileItem, buildSimpleFileTree } from './FileTree';
+import React, { VFC, useState, useEffect } from 'react';
+import { vscode } from '../../lib/api';
 
 export interface ChainInfo {
 	inChain: boolean;
@@ -150,7 +150,9 @@ export const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 				>
 					<span
 						className={`codicon ${
-							expanded ? 'codicon-chevron-down' : 'codicon-chevron-right'
+							expanded
+								? 'codicon-chevron-down'
+								: 'codicon-chevron-right'
 						}`}
 					></span>
 				</button>
@@ -159,13 +161,21 @@ export const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 						type="checkbox"
 						checked={selected}
 						onChange={(e) => {
-							onSelectionChange(change.changeID, e.target.checked);
+							onSelectionChange(
+								change.changeID,
+								e.target.checked
+							);
 						}}
 					/>
 					<div className="change-info">
 						<div className="change-header">
-							<span className="change-number">#{change.number}</span>
-							<span className="change-subject" title={change.subject}>
+							<span className="change-number">
+								#{change.number}
+							</span>
+							<span
+								className="change-subject"
+								title={change.subject}
+							>
 								{change.subject}
 							</span>
 							{showScore && change.score !== undefined && (
@@ -199,24 +209,33 @@ export const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 									title={
 										chainInfo.hasUnsubmittedDependencies
 											? `This change is part of a chain (${chainInfo.position} of ${chainInfo.length}) but has unsubmitted dependencies. Submit changes in order starting from #1.`
-											: chainInfo.position != null && chainInfo.length != null
+											: chainInfo.position != null &&
+												  chainInfo.length != null
 												? `This change is part of a relation chain (${chainInfo.position} of ${chainInfo.length}).\n\nThe Batch view will submit them in order automatically for you. You just have to make sure you have a connected chain that goes in order 1,2,3...`
 												: 'This change is part of a relation chain. Submit all changes in order, starting from the base.'
 									}
 								>
 									<span className="codicon codicon-link"></span>
-									{chainInfo.position != null && chainInfo.length != null && (
-										<span className="chain-position">
-											{chainInfo.position}/{chainInfo.length}
-										</span>
-									)}
+									{chainInfo.position != null &&
+										chainInfo.length != null && (
+											<span className="chain-position">
+												{chainInfo.position}/
+												{chainInfo.length}
+											</span>
+										)}
 								</span>
 							)}
 						</div>
 						<div className="change-details">
-							<span className="change-project">{change.project}</span>
-							<span className="change-branch">{change.branch}</span>
-							<span className="change-owner">{change.owner.name}</span>
+							<span className="change-project">
+								{change.project}
+							</span>
+							<span className="change-branch">
+								{change.branch}
+							</span>
+							<span className="change-owner">
+								{change.owner.name}
+							</span>
 						</div>
 					</div>
 				</label>

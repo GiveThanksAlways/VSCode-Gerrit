@@ -1,6 +1,6 @@
 import React, { VFC, useState, useEffect, useRef } from 'react';
-import { BatchReviewChange } from '../../../../types';
 import { ExpandableChangeItem, ChainInfo } from './ChangeItem';
+import { BatchReviewChange } from '../../../../types';
 
 interface ChangeListProps {
 	changes: BatchReviewChange[];
@@ -152,7 +152,10 @@ export const ChangeList: VFC<ChangeListProps> = ({
 				<h2>{title}</h2>
 				<div className="list-header-actions">
 					{onFileViewModeChange && (
-						<div className="view-mode-toggle" title="Toggle file view mode">
+						<div
+							className="view-mode-toggle"
+							title="Toggle file view mode"
+						>
 							<button
 								className={`view-mode-btn ${fileViewMode === 'list' ? 'active' : ''}`}
 								onClick={() => onFileViewModeChange('list')}
