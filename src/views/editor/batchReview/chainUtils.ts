@@ -83,8 +83,8 @@ export interface ChainInfoResult {
 	inChain: boolean;
 	position?: number;
 	length?: number;
-	/** Short chain ID based on first 7 chars of base change's Change-Id */
-	chainId?: string;
+	/** Change number of the base (first) change in the chain */
+	chainNumber?: number;
 	/** Full Change-Id of the base (first) change in the chain */
 	chainBaseChangeId?: string;
 }
@@ -150,14 +150,38 @@ export async function isChangeChained(
 	// The base of the chain is the last item in the array (oldest ancestor)
 	const baseChangeId =
 		chain.length > 0 ? chain[chain.length - 1].change_id : undefined;
-	// Create a short chain ID from the base's Change-Id (first 7 chars after 'I')
-	const chainId = baseChangeId ? baseChangeId.slice(1, 8) : undefined;
+
+	// Fetch the change number for the base change
+	let chainNumber: number | undefined;
+	if (baseChangeId) {
+		try {
+			const baseDetailResp = await api['_tryRequest']({
+				path: `changes/${baseChangeId}/detail/`,
+				method: 'GET',
+			});
+			if (
+				baseDetailResp &&
+				api['_assertRequestSucceeded'](baseDetailResp)
+			) {
+				const baseDetailJson = api['_tryParseJSON']<{
+					_number: number;
+				}>(baseDetailResp.strippedBody);
+				chainNumber = baseDetailJson?._number;
+			}
+		} catch (err) {
+			console.warn(
+				'[isChangeChained] Error fetching base change detail for',
+				baseChangeId,
+				err
+			);
+		}
+	}
 
 	return {
 		inChain: chain.length > 1,
 		position: idx >= 0 && chain.length > 1 ? chain.length - idx : undefined,
 		length: chain.length > 1 ? chain.length : undefined,
-		chainId,
+		chainNumber,
 		chainBaseChangeId: baseChangeId,
 	};
 }
