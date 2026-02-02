@@ -1,4 +1,4 @@
-import React, { VFC, useState } from 'react';
+import React, { VFC, useEffect, useRef } from 'react';
 
 interface SafetyArmedButtonProps {
 	onClick: () => void;
@@ -9,6 +9,12 @@ interface SafetyArmedButtonProps {
 	title: string;
 	/** Confirmation message shown in the armed state */
 	confirmLabel?: string;
+	/** Unique ID for this button (used to coordinate with other safety buttons) */
+	buttonId?: string;
+	/** Externally controlled armed state */
+	isArmed?: boolean;
+	/** Callback when arm state changes */
+	onArmedChange?: (buttonId: string, armed: boolean) => void;
 }
 
 /**
@@ -16,10 +22,12 @@ interface SafetyArmedButtonProps {
  * Like a missile launch safety cover - you must flip the switch first.
  *
  * Flow:
- * 1. User clicks the safety toggle to "arm" the button
- * 2. The actual action button becomes visible/enabled
- * 3. User clicks the action button to execute
- * 4. Button automatically disarms after action
+ * 1. User clicks the button to "arm" it
+ * 2. A confirmation popup appears above/below the button
+ * 3. User clicks confirm to execute or cancel to disarm
+ * 4. Button automatically disarms after action or timeout
+ *
+ * The button size stays consistent - only the popup appears/disappears.
  */
 export const SafetyArmedButton: VFC<SafetyArmedButtonProps> = ({
 	onClick,
@@ -29,64 +37,102 @@ export const SafetyArmedButton: VFC<SafetyArmedButtonProps> = ({
 	label,
 	title,
 	confirmLabel = 'Confirm',
+	buttonId,
+	isArmed: externalIsArmed,
+	onArmedChange,
 }) => {
-	const [isArmed, setIsArmed] = useState(false);
+	const containerRef = useRef<HTMLDivElement>(null);
+	// Use external state if provided, otherwise internal state
+	const [internalIsArmed, setInternalIsArmed] = React.useState(false);
+	const isControlled =
+		buttonId !== undefined &&
+		externalIsArmed !== undefined &&
+		onArmedChange !== undefined;
+	const isArmed = isControlled ? externalIsArmed : internalIsArmed;
+
+	const setArmed = (armed: boolean) => {
+		if (isControlled) {
+			onArmedChange!(buttonId!, armed);
+		} else {
+			setInternalIsArmed(armed);
+		}
+	};
+
+	// Auto-disarm after a timeout for safety
+	useEffect(() => {
+		if (isArmed) {
+			const timer = setTimeout(() => {
+				setArmed(false);
+			}, 10000); // 10 second timeout
+			return () => clearTimeout(timer);
+		}
+		return undefined;
+	}, [isArmed]);
+
+	// Close popup when clicking outside
+	useEffect(() => {
+		if (!isArmed) return;
+		const handleClickOutside = (e: MouseEvent) => {
+			if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+				setArmed(false);
+			}
+		};
+		document.addEventListener('mousedown', handleClickOutside);
+		return () => document.removeEventListener('mousedown', handleClickOutside);
+	}, [isArmed]);
 
 	const handleArmClick = () => {
-		setIsArmed(true);
+		setArmed(true);
 	};
 
-	const handleConfirmClick = () => {
+	const handleConfirmClick = (e: React.MouseEvent) => {
+		e.stopPropagation();
 		onClick();
-		setIsArmed(false);
+		setArmed(false);
 	};
 
-	const handleCancelClick = () => {
-		setIsArmed(false);
+	const handleCancelClick = (e: React.MouseEvent) => {
+		e.stopPropagation();
+		setArmed(false);
 	};
-
-	if (isArmed) {
-		return (
-			<div className="safety-armed-container armed">
-				<div className="safety-armed-backdrop">
-					<span className="safety-armed-message">
-						<span className="codicon codicon-warning"></span>
-						Are you sure?
-					</span>
-				</div>
-				<div className="safety-armed-buttons">
-					<button
-						onClick={handleConfirmClick}
-						disabled={disabled}
-						className={`${buttonClassName} safety-confirm-button`}
-						title={title}
-					>
-						<span className={`codicon ${icon}`}></span>
-						{confirmLabel}
-					</button>
-					<button
-						onClick={handleCancelClick}
-						className="safety-cancel-button"
-						title="Cancel"
-					>
-						<span className="codicon codicon-close"></span>
-					</button>
-				</div>
-			</div>
-		);
-	}
 
 	return (
-		<div className="safety-armed-container">
+		<div className="safety-button-wrapper" ref={containerRef}>
 			<button
 				onClick={handleArmClick}
 				disabled={disabled}
-				className={`${buttonClassName} safety-unarmed`}
+				className={`${buttonClassName} ${isArmed ? 'safety-active' : ''}`}
 				title={title}
 			>
 				<span className={`codicon ${icon}`}></span>
 				{label}
 			</button>
+			{isArmed && (
+				<div className="safety-popup">
+					<div className="safety-popup-header">
+						<span className="codicon codicon-warning"></span>
+						<span>Are you sure?</span>
+					</div>
+					<div className="safety-popup-actions">
+						<button
+							onClick={handleConfirmClick}
+							disabled={disabled}
+							className="safety-popup-confirm"
+							title={title}
+						>
+							<span className="codicon codicon-check"></span>
+							{confirmLabel}
+						</button>
+						<button
+							onClick={handleCancelClick}
+							className="safety-popup-cancel"
+							title="Cancel"
+						>
+							<span className="codicon codicon-close"></span>
+						</button>
+					</div>
+				</div>
+			)}
 		</div>
 	);
 };

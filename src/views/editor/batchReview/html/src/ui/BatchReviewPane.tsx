@@ -33,12 +33,26 @@ export const BatchReviewPane: VFC = () => {
 	const [openSection, setOpenSection] = useState<'batch' | 'individual'>(
 		'batch'
 	);
-	// Chain info map for batch items - used for validation and highlighting
+	// Chain info map for all items - used for validation, highlighting, and chain selection
 	const [chainInfoMap, setChainInfoMap] = useState<Map<string, ChainInfo>>(
 		new Map()
 	);
 	// Chain validation warnings
 	const [chainWarnings, setChainWarnings] = useState<string[]>([]);
+	// Track which safety button is armed (only one at a time)
+	const [armedButtonId, setArmedButtonId] = useState<string | null>(null);
+
+	// Handler for coordinated safety button arming
+	const handleArmedChange = useCallback(
+		(buttonId: string, armed: boolean) => {
+			if (armed) {
+				setArmedButtonId(buttonId);
+			} else if (armedButtonId === buttonId) {
+				setArmedButtonId(null);
+			}
+		},
+		[armedButtonId]
+	);
 
 	useEffect(() => {
 		const messageHandler = (event: MessageEvent) => {
@@ -76,116 +90,113 @@ export const BatchReviewPane: VFC = () => {
 	 * Checks if:
 	 * 1. All items in a chain are present starting from position 1
 	 * 2. Items have unsubmitted dependencies
+	 *
+	 * Only marks items that are actually broken (after a gap or missing base)
+	 * Items before a gap are valid and get a normal color.
 	 */
-	const validateChain = useCallback(() => {
+	useEffect(() => {
+		// Skip if no batch changes
+		if (state.batchChanges.length === 0) {
+			setChainWarnings([]);
+			return;
+		}
+
 		const warnings: string[] = [];
 		const updatedChainInfo = new Map<string, ChainInfo>();
 
-		// Group changes by chain (using their chain length as a rough grouper)
-		const chainGroups = new Map<string, BatchReviewChange[]>();
+		// Group changes by chain using chainNumber (the base change number)
+		const chainGroups = new Map<number, { change: BatchReviewChange; position: number }[]>();
 
 		for (const change of state.batchChanges) {
 			const info = chainInfoMap.get(change.changeId);
-			if (info?.inChain && info.length) {
-				// Create a rough chain key using branch and length
-				// This isn't perfect but helps group related changes
-				const chainKey = `${change.branch}-${info.length}`;
-				if (!chainGroups.has(chainKey)) {
-					chainGroups.set(chainKey, []);
-				}
-				chainGroups.get(chainKey)!.push(change);
+			if (info?.inChain && info.chainNumber && info.position) {
+				const group = chainGroups.get(info.chainNumber) ?? [];
+				group.push({ change, position: info.position });
+				chainGroups.set(info.chainNumber, group);
 			}
 		}
 
 		// Check each chain group for completeness
-		chainGroups.forEach((changes, chainKey) => {
-			// Get all positions in this chain that are in the batch
-			const positions = changes
-				.map((c) => {
-					const info = chainInfoMap.get(c.changeId);
-					return info?.position ?? 0;
-				})
-				.filter((p) => p > 0)
-				.sort((a, b) => a - b);
+		let colorIdx = 0;
+		chainGroups.forEach((items, chainNumber) => {
+			// Sort by position
+			items.sort((a, b) => a.position - b.position);
+			const positions = items.map((item) => item.position);
 
 			if (positions.length === 0) return;
 
-			// Check if we're missing position 1 (the base)
-			if (positions[0] !== 1) {
-				warnings.push(
-					`Chain starting at position ${positions[0]} is missing changes 1-${positions[0] - 1}. Submit changes in order starting from the base.`
-				);
+			// Find contiguous run starting from position 1
+			// Items in the contiguous run are valid, items after a gap are broken
+			let lastValidPosition = 0;
+			const validPositions = new Set<number>();
+			const brokenPositions = new Set<number>();
 
-				// Mark all changes in this chain as having unsubmitted dependencies
-				for (const change of changes) {
-					const existing = chainInfoMap.get(change.changeId);
-					updatedChainInfo.set(change.changeId, {
-						...existing,
-						inChain: true,
-						hasUnsubmittedDependencies: true,
-						chainColorClass: 'chain-warning-glow',
-					});
-				}
-			} else {
-				// Check for gaps in the sequence
-				let hasGap = false;
-				for (let i = 1; i < positions.length; i++) {
-					if (positions[i] !== positions[i - 1] + 1) {
-						warnings.push(
-							`Chain has a gap between positions ${positions[i - 1]} and ${positions[i]}. All changes in the chain must be included.`
-						);
-						hasGap = true;
-						break;
-					}
-				}
-
-				if (hasGap) {
-					// Mark all changes in this chain as having unsubmitted dependencies (gap)
-					for (const change of changes) {
-						const existing = chainInfoMap.get(change.changeId);
-						updatedChainInfo.set(change.changeId, {
-							...existing,
-							inChain: true,
-							hasUnsubmittedDependencies: true,
-							chainColorClass: 'chain-warning-glow',
-						});
-					}
+			for (const pos of positions) {
+				if (pos === lastValidPosition + 1) {
+					// Contiguous - this position is valid
+					validPositions.add(pos);
+					lastValidPosition = pos;
 				} else {
-					// Mark all changes in this chain with a color
-					const colorIndex =
-						Array.from(chainGroups.keys()).indexOf(chainKey) % 5;
-					const colorClass = `chain-color-${colorIndex + 1}`;
-					for (const change of changes) {
-						const existing = chainInfoMap.get(change.changeId);
-						updatedChainInfo.set(change.changeId, {
-							...existing,
-							inChain: true,
-							hasUnsubmittedDependencies: false,
-							chainColorClass: colorClass,
-						});
-					}
+					// Gap found - this and all subsequent positions are broken
+					brokenPositions.add(pos);
 				}
+			}
+
+			// If we have broken positions, add a warning
+			if (brokenPositions.size > 0) {
+				const brokenList = Array.from(brokenPositions).sort((a, b) => a - b);
+				if (validPositions.size === 0) {
+					warnings.push(
+						`Chain #${chainNumber} is missing the base (position 1). Add changes 1-${brokenList[0] - 1} to submit.`
+					);
+				} else {
+					warnings.push(
+						`Chain #${chainNumber} has a gap after position ${lastValidPosition}. Position(s) ${brokenList.join(', ')} cannot be submitted until the gap is filled.`
+					);
+				}
+			}
+
+			// Assign colors
+			const colorClass = `chain-color-${(colorIdx % 5) + 1}`;
+			colorIdx++;
+
+			for (const item of items) {
+				const existing = chainInfoMap.get(item.change.changeId);
+				const isBroken = brokenPositions.has(item.position);
+				updatedChainInfo.set(item.change.changeId, {
+					...existing,
+					inChain: true,
+					hasUnsubmittedDependencies: isBroken,
+					chainColorClass: isBroken ? 'chain-warning-glow' : colorClass,
+				});
 			}
 		});
 
-		// Merge updated info
+		// Merge updated info - only if there are actual changes
 		if (updatedChainInfo.size > 0) {
 			setChainInfoMap((prev) => {
 				const newMap = new Map(prev);
+				let hasChanges = false;
 				updatedChainInfo.forEach((value, key) => {
-					newMap.set(key, value);
+					const existing = prev.get(key);
+					// Only update if values actually changed
+					if (
+						!existing ||
+						existing.hasUnsubmittedDependencies !== value.hasUnsubmittedDependencies ||
+						existing.chainColorClass !== value.chainColorClass
+					) {
+						newMap.set(key, value);
+						hasChanges = true;
+					}
 				});
-				return newMap;
+				return hasChanges ? newMap : prev;
 			});
 		}
 
 		setChainWarnings(warnings);
-	}, [state.batchChanges, chainInfoMap]);
-
-	// Validate chain when batch changes or chain info updates
-	useEffect(() => {
-		validateChain();
-	}, [validateChain]);
+		// Only depend on batchChanges - chainInfoMap updates are handled internally
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [state.batchChanges.length, state.batchChanges.map(c => c.changeId).join(',')]);
 
 	const handleYourTurnSelection = (changeID: string, selected: boolean) => {
 		const newSet = new Set(selectedYourTurn);
@@ -238,6 +249,24 @@ export const BatchReviewPane: VFC = () => {
 
 	const handleRemoveFromBatch = () => {
 		if (selectedBatch.size === 0) return;
+		
+		// Clear chain warning state for removed items
+		setChainInfoMap((prev) => {
+			const newMap = new Map(prev);
+			selectedBatch.forEach((changeID) => {
+				const entry = newMap.get(changeID);
+				if (entry) {
+					// Keep basic chain info but clear warning state
+					newMap.set(changeID, {
+						...entry,
+						hasUnsubmittedDependencies: false,
+						chainColorClass: undefined,
+					});
+				}
+			});
+			return newMap;
+		});
+		
 		vscode.postMessage({
 			type: 'removeFromBatch',
 			body: { changeIDs: Array.from(selectedBatch) },
@@ -247,6 +276,23 @@ export const BatchReviewPane: VFC = () => {
 
 	const handleClearBatch = () => {
 		if (state.batchChanges.length === 0) return;
+		
+		// Clear chain warning state for all batch items
+		setChainInfoMap((prev) => {
+			const newMap = new Map(prev);
+			for (const change of state.batchChanges) {
+				const entry = newMap.get(change.changeId);
+				if (entry) {
+					newMap.set(change.changeId, {
+						...entry,
+						hasUnsubmittedDependencies: false,
+						chainColorClass: undefined,
+					});
+				}
+			}
+			return newMap;
+		});
+		
 		vscode.postMessage({ type: 'clearBatch' });
 		setSelectedBatch(new Set());
 	};
@@ -481,6 +527,7 @@ export const BatchReviewPane: VFC = () => {
 						onDrop={handleDrop}
 						fileViewMode={state.fileViewMode ?? 'tree'}
 						onFileViewModeChange={handleFileViewModeChange}
+						chainInfoMap={chainInfoMap}
 					/>
 					<div className="action-buttons">
 						<button
@@ -576,6 +623,11 @@ export const BatchReviewPane: VFC = () => {
 											label={`+2 All (${state.batchChanges.length})`}
 											title="Apply Code-Review +2 to all batch changes"
 											confirmLabel={`+2 All ${state.batchChanges.length}`}
+											buttonId="plus2all"
+											isArmed={
+												armedButtonId === 'plus2all'
+											}
+											onArmedChange={handleArmedChange}
 										/>
 										<SafetyArmedButton
 											onClick={handlePlus2AllAndSubmit}
@@ -587,6 +639,11 @@ export const BatchReviewPane: VFC = () => {
 											label="+2 & Submit"
 											title="Apply +2 and submit all submittable changes"
 											confirmLabel="+2 & Submit"
+											buttonId="plus2submit"
+											isArmed={
+												armedButtonId === 'plus2submit'
+											}
+											onArmedChange={handleArmedChange}
 										/>
 									</div>
 								</div>

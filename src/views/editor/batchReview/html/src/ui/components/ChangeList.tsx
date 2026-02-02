@@ -1,5 +1,5 @@
 import { ExpandableChangeItem, ChainInfo, SelectionEvent } from './ChangeItem';
-import React, { VFC, useState, useEffect, useRef, useCallback } from 'react';
+import React, { VFC, useState, useEffect, useCallback } from 'react';
 import { BatchReviewChange } from '../../../../types';
 
 interface ChangeListProps {
@@ -46,25 +46,22 @@ export const ChangeList: VFC<ChangeListProps> = ({
 		changes.length > 0 &&
 		changes.every((c) => selectedChanges.has(c.changeID));
 	const [isDragOver, setIsDragOver] = useState(false);
-	// Anchor index: the starting point for shift-click range selection
-	const [anchorIndex, setAnchorIndex] = useState<number | null>(null);
-	// Track the previous changes array to detect reordering/modifications
-	const prevChangesRef = useRef<BatchReviewChange[]>(changes);
+	// Anchor changeID: the starting point for shift-click range selection
+	// We track by changeID instead of index so it survives reordering
+	const [anchorChangeID, setAnchorChangeID] = useState<string | null>(null);
 	// Track drop target index for reordering
 	const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null);
 
-	// Reset anchor when changes array is modified (items added, removed, or reordered)
+	// Compute anchor index from changeID - this automatically updates when list reorders
+	const anchorIndex = anchorChangeID
+		? changes.findIndex((c) => c.changeID === anchorChangeID)
+		: null;
+	// If the anchored change was removed from the list, reset anchor
 	useEffect(() => {
-		const prevChanges = prevChangesRef.current;
-		const changesModified =
-			changes.length !== prevChanges.length ||
-			changes.some((c, i) => prevChanges[i]?.changeID !== c.changeID);
-
-		if (changesModified) {
-			setAnchorIndex(null);
+		if (anchorChangeID && anchorIndex === -1) {
+			setAnchorChangeID(null);
 		}
-		prevChangesRef.current = changes;
-	}, [changes]);
+	}, [anchorChangeID, anchorIndex]);
 
 	const handleDragOver = (e: React.DragEvent) => {
 		e.preventDefault();
@@ -110,9 +107,9 @@ export const ChangeList: VFC<ChangeListProps> = ({
 	 * Unified selection event handler.
 	 * Implements robust multi-select behavior following standard conventions:
 	 *
-	 * - toggle: Toggle single item selection (checkbox or Ctrl+click)
+	 * - toggle: Toggle single item selection (checkbox or Ctrl+click or plain click)
 	 * - range: Select range from anchor to clicked item (Shift+click)
-	 * - anchor: Just set anchor point without changing selection (plain row click)
+	 * - anchor: Just set anchor point without changing selection (no longer used)
 	 * - chain: Select all items belonging to a specific chain
 	 */
 	const handleSelectionEvent = useCallback(
@@ -124,13 +121,17 @@ export const ChangeList: VFC<ChangeListProps> = ({
 					// Toggle single item and set anchor
 					const isCurrentlySelected = selectedChanges.has(changeID);
 					onSelectionChange(changeID, !isCurrentlySelected);
-					setAnchorIndex(index);
+					setAnchorChangeID(changeID);
 					break;
 				}
 
 				case 'range': {
 					// Select range from anchor to current
-					const startIndex = anchorIndex ?? 0;
+					// If no anchor set, start from current position
+					const startIndex =
+						anchorIndex !== null && anchorIndex >= 0
+							? anchorIndex
+							: index;
 					const fromIdx = Math.min(startIndex, index);
 					const toIdx = Math.max(startIndex, index);
 					const rangeIDs = changes
@@ -140,30 +141,49 @@ export const ChangeList: VFC<ChangeListProps> = ({
 					// Add range to current selection
 					onMultiSelect(rangeIDs, 'add');
 					// Keep anchor stable for chained shift-clicks
+					// But if there was no anchor, set current as anchor
+					if (anchorIndex === null || anchorIndex < 0) {
+						setAnchorChangeID(changeID);
+					}
 					break;
 				}
 
 				case 'anchor': {
-					// Just set anchor for future shift-clicks
-					setAnchorIndex(index);
+					// Just set anchor for future shift-clicks (currently unused)
+					setAnchorChangeID(changeID);
 					break;
 				}
 
 				case 'chain': {
-					// Select all items in the specified chain
-					if (chainNumber && chainInfoMap) {
+					// Toggle all items in the specified chain
+					// If all are selected, deselect them. Otherwise, select them.
+					if (chainNumber) {
 						const chainChangeIDs: string[] = [];
 						for (const change of changes) {
-							const info = chainInfoMap.get(change.changeId);
+							// Check chainInfoMap first (batch view), otherwise we can't
+							// match chains across items without the map
+							const info = chainInfoMap?.get(change.changeId);
 							if (info?.chainNumber === chainNumber) {
 								chainChangeIDs.push(change.changeID);
 							}
 						}
 						if (chainChangeIDs.length > 0) {
-							onMultiSelect(chainChangeIDs, 'add');
+							// Check if all chain items are currently selected
+							const allSelected = chainChangeIDs.every((id) =>
+								selectedChanges.has(id)
+							);
+							if (allSelected) {
+								// Deselect all chain items
+								for (const id of chainChangeIDs) {
+									onSelectionChange(id, false);
+								}
+							} else {
+								// Select all chain items
+								onMultiSelect(chainChangeIDs, 'add');
+							}
 						}
 					}
-					setAnchorIndex(index);
+					setAnchorChangeID(changeID);
 					break;
 				}
 			}

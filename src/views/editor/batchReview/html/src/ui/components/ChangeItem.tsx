@@ -68,7 +68,13 @@ export const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 		externalChainInfo || { inChain: false }
 	);
 
+	// Only fetch chain info if not provided externally
 	useEffect(() => {
+		// Skip fetching if we have external chain info
+		if (externalChainInfo?.inChain !== undefined) {
+			return;
+		}
+
 		vscode.postMessage({
 			type: 'getChainInfo',
 			body: { changeID: change.changeId }, // Use Change-Id
@@ -83,14 +89,36 @@ export const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 		};
 		window.addEventListener('message', handler);
 		return () => window.removeEventListener('message', handler);
-	}, [change.changeId]);
+	}, [change.changeId, externalChainInfo?.inChain]);
 
-	// Update from external chain info if provided
+	// Update from external chain info if provided - compare by value, not reference
 	useEffect(() => {
-		if (externalChainInfo) {
-			setChainInfo(externalChainInfo);
+		if (externalChainInfo && externalChainInfo.inChain !== undefined) {
+			// Only update if the values are actually different
+			setChainInfo((prev) => {
+				if (
+					prev.inChain === externalChainInfo.inChain &&
+					prev.position === externalChainInfo.position &&
+					prev.length === externalChainInfo.length &&
+					prev.chainNumber === externalChainInfo.chainNumber &&
+					prev.chainColorClass ===
+						externalChainInfo.chainColorClass &&
+					prev.hasUnsubmittedDependencies ===
+						externalChainInfo.hasUnsubmittedDependencies
+				) {
+					return prev; // No change needed
+				}
+				return externalChainInfo;
+			});
 		}
-	}, [externalChainInfo]);
+	}, [
+		externalChainInfo?.inChain,
+		externalChainInfo?.position,
+		externalChainInfo?.length,
+		externalChainInfo?.chainNumber,
+		externalChainInfo?.chainColorClass,
+		externalChainInfo?.hasUnsubmittedDependencies,
+	]);
 
 	const handleExpandClick = (e: React.MouseEvent) => {
 		e.preventDefault();
@@ -127,6 +155,8 @@ export const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 
 	/**
 	 * Handle checkbox click - always toggles selection
+	 * This handler is triggered by both clicking the checkbox directly
+	 * and by the label wrapping it (via htmlFor).
 	 */
 	const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		e.stopPropagation();
@@ -138,17 +168,42 @@ export const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 	};
 
 	/**
-	 * Handle checkbox click event to prevent propagation
+	 * Handle checkbox wrapper click - toggles selection directly
+	 * This ensures clicking the checkbox area always works even if
+	 * the actual checkbox element doesn't receive the event.
 	 */
-	const handleCheckboxClick = (e: React.MouseEvent) => {
+	const handleCheckboxWrapperClick = (e: React.MouseEvent) => {
 		e.stopPropagation();
-		// The onChange handler will handle the actual toggle
+		// Don't double-trigger if the checkbox itself was clicked
+		if ((e.target as HTMLElement).tagName === 'INPUT') {
+			return;
+		}
+		onSelectionEvent({
+			changeID: change.changeID,
+			index,
+			action: 'toggle',
+		});
+	};
+
+	/**
+	 * Handle keyboard on checkbox wrapper (Space/Enter to toggle)
+	 */
+	const handleCheckboxWrapperKeyDown = (e: React.KeyboardEvent) => {
+		if (e.key === ' ' || e.key === 'Enter') {
+			e.preventDefault();
+			e.stopPropagation();
+			onSelectionEvent({
+				changeID: change.changeID,
+				index,
+				action: 'toggle',
+			});
+		}
 	};
 
 	/**
 	 * Handle row click - implements standard multi-select behavior:
-	 * - Plain click: Set anchor for future shift-clicks
-	 * - Ctrl/Cmd+click: Toggle selection of this item
+	 * - Plain click: Toggle selection and set anchor
+	 * - Ctrl/Cmd+click: Toggle selection of this item (add/remove from selection)
 	 * - Shift+click: Select range from anchor to this item
 	 */
 	const handleRowClick = (e: React.MouseEvent) => {
@@ -157,6 +212,7 @@ export const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 		if (
 			target.closest('button') ||
 			target.closest('input') ||
+			target.closest('.change-checkbox-wrapper') ||
 			target.closest('.chain-badge')
 		) {
 			return;
@@ -177,11 +233,11 @@ export const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 				action: 'toggle',
 			});
 		} else {
-			// Plain click - just set anchor for future shift-clicks
+			// Plain click - toggle selection and set anchor
 			onSelectionEvent({
 				changeID: change.changeID,
 				index,
-				action: 'anchor',
+				action: 'toggle',
 			});
 		}
 	};
@@ -237,13 +293,20 @@ export const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 						}`}
 					></span>
 				</button>
-				<div className="change-checkbox-wrapper">
+				<div
+					className="change-checkbox-wrapper"
+					onClick={handleCheckboxWrapperClick}
+					onKeyDown={handleCheckboxWrapperKeyDown}
+					role="checkbox"
+					aria-checked={selected}
+					tabIndex={0}
+				>
 					<input
 						type="checkbox"
 						className="change-checkbox"
 						checked={selected}
 						onChange={handleCheckboxChange}
-						onClick={handleCheckboxClick}
+						tabIndex={-1}
 					/>
 				</div>
 				<div className="change-info">

@@ -253,6 +253,8 @@ body {
 .change-item {
 	border-bottom: 1px solid var(--vscode-panel-border);
 	transition: background-color 0.15s;
+	cursor: pointer;
+	user-select: none;
 }
 
 .change-item:last-child {
@@ -1809,12 +1811,25 @@ input:focus-visible,
 	transform: scale(0.95);
 }
 
-/* Checkbox wrapper for better alignment */
+/* Checkbox wrapper for better alignment and click area */
 .change-checkbox-wrapper {
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	margin-right: 8px;
+	padding: 4px;
+	cursor: pointer;
+	border-radius: 4px;
+	transition: background-color 0.1s ease;
+}
+
+.change-checkbox-wrapper:hover {
+	background-color: rgba(255, 255, 255, 0.05);
+}
+
+.change-checkbox-wrapper:focus {
+	outline: 1px solid var(--vscode-focusBorder);
+	outline-offset: -1px;
 }
 
 .change-checkbox-wrapper .change-checkbox {
@@ -1822,98 +1837,131 @@ input:focus-visible,
 	height: 16px;
 	cursor: pointer;
 	accent-color: var(--vscode-checkbox-background);
+	pointer-events: none; /* Let wrapper handle clicks */
 }
 
 /* =========================================
    Safety Armed Button Styles
-   Like a missile launch safety cover
+   Popup overlay design - button size stays consistent
    ========================================= */
 
-.safety-armed-container {
-	display: flex;
-	flex: 1;
+.safety-button-wrapper {
 	position: relative;
+	display: inline-flex;
 }
 
-.safety-armed-container.armed {
+/* When armed, highlight the button slightly */
+.safety-button-wrapper button.safety-active {
+	border-color: rgba(255, 193, 7, 0.6);
+	box-shadow: 0 0 8px rgba(255, 193, 7, 0.3);
+}
+
+/* Popup that appears above/below the button */
+.safety-popup {
+	position: absolute;
+	bottom: calc(100% + 8px);
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 100;
+	
+	display: flex;
 	flex-direction: column;
 	gap: 8px;
-	background: linear-gradient(
-		135deg,
-		rgba(255, 193, 7, 0.15) 0%,
-		rgba(255, 152, 0, 0.1) 100%
-	);
-	border: 2px solid rgba(255, 193, 7, 0.5);
-	border-radius: 8px;
 	padding: 12px;
-	animation: armPulse 1.5s ease-in-out infinite;
+	min-width: 180px;
+	
+	background: var(--vscode-editorWidget-background, #252526);
+	border: 1px solid rgba(255, 193, 7, 0.5);
+	border-radius: 8px;
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+	
+	animation: popupFadeIn 0.15s ease-out;
 }
 
-@keyframes armPulse {
-	0%,
-	100% {
-		box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.3);
+@keyframes popupFadeIn {
+	from {
+		opacity: 0;
+		transform: translateX(-50%) translateY(4px);
 	}
-	50% {
-		box-shadow: 0 0 12px 4px rgba(255, 193, 7, 0.2);
+	to {
+		opacity: 1;
+		transform: translateX(-50%) translateY(0);
 	}
 }
 
-.safety-armed-backdrop {
+/* Arrow pointing down to the button */
+.safety-popup::after {
+	content: '';
+	position: absolute;
+	top: 100%;
+	left: 50%;
+	transform: translateX(-50%);
+	border: 8px solid transparent;
+	border-top-color: rgba(255, 193, 7, 0.5);
+}
+
+.safety-popup-header {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	gap: 8px;
-}
-
-.safety-armed-message {
-	display: flex;
-	align-items: center;
 	gap: 6px;
 	font-size: 13px;
 	font-weight: 600;
 	color: #ffc107;
 }
 
-.safety-armed-message .codicon {
+.safety-popup-header .codicon {
 	font-size: 16px;
 }
 
-.safety-armed-buttons {
+.safety-popup-actions {
 	display: flex;
 	gap: 8px;
 }
 
-.safety-confirm-button {
+.safety-popup-confirm {
 	flex: 1;
-}
-
-.safety-cancel-button {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 36px;
-	height: 36px;
-	padding: 0;
-	background: rgba(255, 255, 255, 0.1);
-	border: 1px solid rgba(255, 255, 255, 0.2);
-	border-radius: 6px;
+	gap: 6px;
+	padding: 6px 12px;
+	font-size: 12px;
+	font-weight: 500;
+	background: linear-gradient(135deg, rgba(255, 193, 7, 0.25), rgba(255, 152, 0, 0.2));
+	border: 1px solid rgba(255, 193, 7, 0.5);
+	border-radius: 4px;
 	color: var(--vscode-foreground);
 	cursor: pointer;
 	transition: all 0.15s ease;
 }
 
-.safety-cancel-button:hover {
-	background: rgba(255, 255, 255, 0.2);
+.safety-popup-confirm:hover:not(:disabled) {
+	background: linear-gradient(135deg, rgba(255, 193, 7, 0.4), rgba(255, 152, 0, 0.3));
 }
 
-.safety-unarmed {
-	position: relative;
+.safety-popup-confirm:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
 }
 
-.safety-unarmed .codicon-shield {
-	margin-right: 4px;
-	opacity: 0.7;
+.safety-popup-cancel {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	background: rgba(255, 255, 255, 0.08);
+	border: 1px solid rgba(255, 255, 255, 0.15);
+	border-radius: 4px;
+	color: var(--vscode-foreground);
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+
+.safety-popup-cancel:hover {
+	background: rgba(255, 255, 255, 0.15);
 }
 
 /* =========================================
