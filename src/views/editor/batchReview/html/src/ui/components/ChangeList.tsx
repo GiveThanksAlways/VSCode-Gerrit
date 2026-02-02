@@ -1,5 +1,5 @@
-import React, { VFC, useState, useEffect, useRef } from 'react';
-import { ExpandableChangeItem, ChainInfo } from './ChangeItem';
+import { ExpandableChangeItem, ChainInfo, SelectionEvent } from './ChangeItem';
+import React, { VFC, useState, useEffect, useRef, useCallback } from 'react';
 import { BatchReviewChange } from '../../../../types';
 
 interface ChangeListProps {
@@ -107,39 +107,76 @@ export const ChangeList: VFC<ChangeListProps> = ({
 	};
 
 	/**
-	 * Robust multi-select state machine:
-	 * - Shift+Click: Select range from anchor to current (add to existing selection)
-	 * - Ctrl/Cmd+Click: Toggle individual item, set new anchor
-	 * - Plain Click: Select single item (via checkbox handler), set anchor
+	 * Unified selection event handler.
+	 * Implements robust multi-select behavior following standard conventions:
+	 *
+	 * - toggle: Toggle single item selection (checkbox or Ctrl+click)
+	 * - range: Select range from anchor to clicked item (Shift+click)
+	 * - anchor: Just set anchor point without changing selection (plain row click)
+	 * - chain: Select all items belonging to a specific chain
 	 */
-	const handleItemClick = (
-		changeID: string,
-		index: number,
-		e: React.MouseEvent
-	) => {
-		e.stopPropagation();
+	const handleSelectionEvent = useCallback(
+		(event: SelectionEvent) => {
+			const { changeID, index, action, chainNumber } = event;
 
-		if (e.shiftKey) {
-			// Shift+Click: Select range from anchor (or 0 if no anchor) to current index
-			const startIndex = anchorIndex ?? 0;
-			const fromIdx = Math.min(startIndex, index);
-			const toIdx = Math.max(startIndex, index);
-			const rangeIDs = changes
-				.slice(fromIdx, toIdx + 1)
-				.map((c) => c.changeID);
+			switch (action) {
+				case 'toggle': {
+					// Toggle single item and set anchor
+					const isCurrentlySelected = selectedChanges.has(changeID);
+					onSelectionChange(changeID, !isCurrentlySelected);
+					setAnchorIndex(index);
+					break;
+				}
 
-			// Add range to current selection (don't replace)
-			onMultiSelect(rangeIDs, 'add');
-			// Don't update anchor on shift-click - keep it stable for chaining
-		} else if (e.ctrlKey || e.metaKey) {
-			// Ctrl/Cmd+Click: Toggle this item and set new anchor
-			onSelectionChange(changeID, !selectedChanges.has(changeID));
-			setAnchorIndex(index);
-		} else {
-			// Plain click: Set anchor for future shift-clicks
-			setAnchorIndex(index);
-		}
-	};
+				case 'range': {
+					// Select range from anchor to current
+					const startIndex = anchorIndex ?? 0;
+					const fromIdx = Math.min(startIndex, index);
+					const toIdx = Math.max(startIndex, index);
+					const rangeIDs = changes
+						.slice(fromIdx, toIdx + 1)
+						.map((c) => c.changeID);
+
+					// Add range to current selection
+					onMultiSelect(rangeIDs, 'add');
+					// Keep anchor stable for chained shift-clicks
+					break;
+				}
+
+				case 'anchor': {
+					// Just set anchor for future shift-clicks
+					setAnchorIndex(index);
+					break;
+				}
+
+				case 'chain': {
+					// Select all items in the specified chain
+					if (chainNumber && chainInfoMap) {
+						const chainChangeIDs: string[] = [];
+						for (const change of changes) {
+							const info = chainInfoMap.get(change.changeId);
+							if (info?.chainNumber === chainNumber) {
+								chainChangeIDs.push(change.changeID);
+							}
+						}
+						if (chainChangeIDs.length > 0) {
+							onMultiSelect(chainChangeIDs, 'add');
+						}
+					}
+					setAnchorIndex(index);
+					break;
+				}
+			}
+		},
+		[
+			changes,
+			selectedChanges,
+			anchorIndex,
+			chainInfoMap,
+			onSelectionChange,
+			onMultiSelect,
+		]
+	);
 
 	return (
 		<div
@@ -203,14 +240,13 @@ export const ChangeList: VFC<ChangeListProps> = ({
 								key={change.changeID}
 								change={change}
 								selected={selectedChanges.has(change.changeID)}
-								onSelectionChange={onSelectionChange}
+								onSelectionEvent={handleSelectionEvent}
 								showScore={showScores}
 								draggable={true}
 								onDragStart={handleItemDragStart}
 								onDragOver={handleItemDragOver}
 								fileViewMode={fileViewMode}
 								index={index}
-								onItemClick={handleItemClick}
 								showDropIndicator={indicator}
 								chainInfo={chainInfoMap?.get(change.changeId)}
 							/>

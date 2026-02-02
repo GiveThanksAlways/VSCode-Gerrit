@@ -17,21 +17,33 @@ export interface ChainInfo {
 	chainBaseChangeId?: string;
 }
 
+/**
+ * Selection event types for the ChangeItem component.
+ * This provides a clean interface for the parent to handle all selection scenarios.
+ */
+export interface SelectionEvent {
+	changeID: string;
+	index: number;
+	/** The type of selection action */
+	action:
+		| 'toggle' // Toggle single item (checkbox click or Ctrl+click)
+		| 'range' // Select range from anchor (Shift+click)
+		| 'anchor' // Just set anchor, no selection change (plain click on row)
+		| 'chain'; // Select all items in this chain
+	/** For chain selection, the chain number to select */
+	chainNumber?: number;
+}
+
 interface ExpandableChangeItemProps {
 	change: BatchReviewChange;
 	selected: boolean;
-	onSelectionChange: (changeID: string, selected: boolean) => void;
+	onSelectionEvent: (event: SelectionEvent) => void;
 	showScore?: boolean;
 	draggable?: boolean;
 	onDragStart?: (e: React.DragEvent, changeID: string) => void;
 	onDragOver?: (e: React.DragEvent, index: number) => void;
 	fileViewMode?: 'list' | 'tree';
 	index: number;
-	onItemClick?: (
-		changeID: string,
-		index: number,
-		e: React.MouseEvent
-	) => void;
 	showDropIndicator?: 'before' | 'after' | null;
 	/** Chain info for highlighting */
 	chainInfo?: ChainInfo;
@@ -40,14 +52,13 @@ interface ExpandableChangeItemProps {
 export const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 	change,
 	selected,
-	onSelectionChange,
+	onSelectionEvent,
 	showScore = false,
 	draggable = false,
 	onDragStart,
 	onDragOver,
 	fileViewMode = 'tree',
 	index,
-	onItemClick,
 	showDropIndicator = null,
 	chainInfo: externalChainInfo,
 }) => {
@@ -108,19 +119,85 @@ export const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 		}
 	};
 
-	const handleRowClick = (e: React.MouseEvent) => {
-		// Always call onItemClick to handle selection and set anchor
-		// For shift/ctrl clicks, do multi-select
-		// For plain clicks, just set the anchor for future shift-clicks
-		if (e.shiftKey || e.ctrlKey || e.metaKey) {
-			e.preventDefault();
-		}
-		onItemClick?.(change.changeID, index, e);
-	};
-
 	const handleItemDragOver = (e: React.DragEvent) => {
 		if (onDragOver) {
 			onDragOver(e, index);
+		}
+	};
+
+	/**
+	 * Handle checkbox click - always toggles selection
+	 */
+	const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		e.stopPropagation();
+		onSelectionEvent({
+			changeID: change.changeID,
+			index,
+			action: 'toggle',
+		});
+	};
+
+	/**
+	 * Handle checkbox click event to prevent propagation
+	 */
+	const handleCheckboxClick = (e: React.MouseEvent) => {
+		e.stopPropagation();
+		// The onChange handler will handle the actual toggle
+	};
+
+	/**
+	 * Handle row click - implements standard multi-select behavior:
+	 * - Plain click: Set anchor for future shift-clicks
+	 * - Ctrl/Cmd+click: Toggle selection of this item
+	 * - Shift+click: Select range from anchor to this item
+	 */
+	const handleRowClick = (e: React.MouseEvent) => {
+		// Don't handle if clicking on interactive elements
+		const target = e.target as HTMLElement;
+		if (
+			target.closest('button') ||
+			target.closest('input') ||
+			target.closest('.chain-badge')
+		) {
+			return;
+		}
+
+		if (e.shiftKey) {
+			e.preventDefault();
+			onSelectionEvent({
+				changeID: change.changeID,
+				index,
+				action: 'range',
+			});
+		} else if (e.ctrlKey || e.metaKey) {
+			e.preventDefault();
+			onSelectionEvent({
+				changeID: change.changeID,
+				index,
+				action: 'toggle',
+			});
+		} else {
+			// Plain click - just set anchor for future shift-clicks
+			onSelectionEvent({
+				changeID: change.changeID,
+				index,
+				action: 'anchor',
+			});
+		}
+	};
+
+	/**
+	 * Handle chain badge click - selects all items in the chain
+	 */
+	const handleChainBadgeClick = (e: React.MouseEvent) => {
+		e.stopPropagation();
+		if (chainInfo.chainNumber) {
+			onSelectionEvent({
+				changeID: change.changeID,
+				index,
+				action: 'chain',
+				chainNumber: chainInfo.chainNumber,
+			});
 		}
 	};
 
@@ -160,94 +237,93 @@ export const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 						}`}
 					></span>
 				</button>
-				<label className="change-checkbox">
+				<div className="change-checkbox-wrapper">
 					<input
 						type="checkbox"
+						className="change-checkbox"
 						checked={selected}
-						onChange={(e) => {
-							onSelectionChange(
-								change.changeID,
-								e.target.checked
-							);
-						}}
+						onChange={handleCheckboxChange}
+						onClick={handleCheckboxClick}
 					/>
-					<div className="change-info">
-						<div className="change-header">
-							<span className="change-number">
-								#{change.number}
-							</span>
+				</div>
+				<div className="change-info">
+					<div className="change-header">
+						<span className="change-number">#{change.number}</span>
+						<span className="change-subject" title={change.subject}>
+							{change.subject}
+						</span>
+						{showScore && change.score !== undefined && (
 							<span
-								className="change-subject"
-								title={change.subject}
+								className={`change-score score-${Math.min(10, Math.max(1, Math.round(change.score)))}`}
+								title={`AI confidence score: ${change.score}/10`}
 							>
-								{change.subject}
+								{change.score}
 							</span>
-							{showScore && change.score !== undefined && (
-								<span
-									className={`change-score score-${Math.min(10, Math.max(1, Math.round(change.score)))}`}
-									title={`AI confidence score: ${change.score}/10`}
-								>
-									{change.score}
-								</span>
-							)}
-							{/* Always show +2 checkmark if present */}
-							{change.hasCodeReviewPlus2 && (
-								<span
-									className="status-badge plus2"
-									title="Has Code-Review +2"
-								>
-									<span className="codicon codicon-check"></span>
-								</span>
-							)}
-							{change.submittable && (
-								<span
-									className="status-badge submittable"
-									title="Ready to submit"
-								>
-									<span className="codicon codicon-git-merge"></span>
-								</span>
-							)}
-							{chainInfo.inChain && (
-								<span
-									className={`chain-badge ${chainInfo.hasUnsubmittedDependencies ? 'chain-warning-badge' : ''}`}
-									title={
-										chainInfo.hasUnsubmittedDependencies
-											? `Base change: #${chainInfo.chainNumber} (Position ${chainInfo.position} of ${chainInfo.length})\n\n⚠️ Has unsubmitted dependencies. Submit changes in order starting from #1.`
-											: chainInfo.position != null &&
-												  chainInfo.length != null
-												? `Base change: #${chainInfo.chainNumber} (Position ${chainInfo.position} of ${chainInfo.length})\n\nThe Batch view will submit them in order automatically for you. You just have to make sure you have a connected chain that goes in order 1,2,3...`
-												: 'This change is part of a relation chain. Submit all changes in order, starting from the base.'
+						)}
+						{/* Always show +2 checkmark if present */}
+						{change.hasCodeReviewPlus2 && (
+							<span
+								className="status-badge plus2"
+								title="Has Code-Review +2"
+							>
+								<span className="codicon codicon-check"></span>
+							</span>
+						)}
+						{change.submittable && (
+							<span
+								className="status-badge submittable"
+								title="Ready to submit"
+							>
+								<span className="codicon codicon-git-merge"></span>
+							</span>
+						)}
+						{chainInfo.inChain && (
+							<span
+								className={`chain-badge clickable ${chainInfo.hasUnsubmittedDependencies ? 'chain-warning-badge' : ''}`}
+								title={
+									chainInfo.hasUnsubmittedDependencies
+										? `Base change: #${chainInfo.chainNumber} (Position ${chainInfo.position} of ${chainInfo.length})\n\n⚠️ Has unsubmitted dependencies. Submit changes in order starting from #1.\n\nClick to select all changes in this chain.`
+										: chainInfo.position != null &&
+											  chainInfo.length != null
+											? `Base change: #${chainInfo.chainNumber} (Position ${chainInfo.position} of ${chainInfo.length})\n\nThe Batch view will submit them in order automatically for you.\n\nClick to select all changes in this chain.`
+											: 'This change is part of a relation chain.\n\nClick to select all changes in this chain.'
+								}
+								onClick={handleChainBadgeClick}
+								role="button"
+								tabIndex={0}
+								onKeyDown={(e) => {
+									if (e.key === 'Enter' || e.key === ' ') {
+										e.preventDefault();
+										handleChainBadgeClick(
+											e as unknown as React.MouseEvent
+										);
 									}
-								>
-									<span className="codicon codicon-link"></span>
-									{chainInfo.chainNumber && (
-										<span className="chain-id">
-											#{chainInfo.chainNumber}
+								}}
+							>
+								<span className="codicon codicon-link"></span>
+								{chainInfo.chainNumber && (
+									<span className="chain-id">
+										#{chainInfo.chainNumber}
+									</span>
+								)}
+								{chainInfo.position != null &&
+									chainInfo.length != null && (
+										<span className="chain-position">
+											{chainInfo.position}/
+											{chainInfo.length}
 										</span>
 									)}
-									{chainInfo.position != null &&
-										chainInfo.length != null && (
-											<span className="chain-position">
-												{chainInfo.position}/
-												{chainInfo.length}
-											</span>
-										)}
-								</span>
-							)}
-						</div>
-						<div className="change-details">
-							<span className="change-project">
-								{change.project}
 							</span>
-							<span className="change-branch">
-								{change.branch}
-							</span>
-							<span className="change-owner">
-								{change.owner.name}
-							</span>
-						</div>
+						)}
 					</div>
-				</label>
+					<div className="change-details">
+						<span className="change-project">{change.project}</span>
+						<span className="change-branch">{change.branch}</span>
+						<span className="change-owner">
+							{change.owner.name}
+						</span>
+					</div>
+				</div>
 				<button
 					className="open-online-button"
 					onClick={(e) => {

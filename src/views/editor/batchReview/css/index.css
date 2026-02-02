@@ -1791,6 +1791,39 @@ input:focus-visible,
 	border-radius: 3px;
 }
 
+/* Clickable chain badge */
+.chain-badge.clickable {
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+
+.chain-badge.clickable:hover {
+	opacity: 1;
+	background: rgba(255, 255, 255, 0.1);
+	border-radius: 4px;
+	padding: 2px 4px;
+	margin-left: 4px;
+}
+
+.chain-badge.clickable:active {
+	transform: scale(0.95);
+}
+
+/* Checkbox wrapper for better alignment */
+.change-checkbox-wrapper {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-right: 8px;
+}
+
+.change-checkbox-wrapper .change-checkbox {
+	width: 16px;
+	height: 16px;
+	cursor: pointer;
+	accent-color: var(--vscode-checkbox-background);
+}
+
 /* =========================================
    Safety Armed Button Styles
    Like a missile launch safety cover
