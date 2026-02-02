@@ -79,9 +79,19 @@ export async function getOrderedBatch(changeIds: string[]): Promise<string[]> {
  * Checks if a change is part of a chain (more than one in /related).
  * Looks up the current commit for the given changeId, then finds its position in the chain by commit hash.
  */
+export interface ChainInfoResult {
+	inChain: boolean;
+	position?: number;
+	length?: number;
+	/** Short chain ID based on first 7 chars of base change's Change-Id */
+	chainId?: string;
+	/** Full Change-Id of the base (first) change in the chain */
+	chainBaseChangeId?: string;
+}
+
 export async function isChangeChained(
 	changeId: string
-): Promise<{ inChain: boolean; position?: number; length?: number }> {
+): Promise<ChainInfoResult> {
 	const api = await getAPI();
 	if (!api) {
 		console.warn('[isChangeChained] No API instance for', changeId);
@@ -137,9 +147,17 @@ export async function isChangeChained(
 		idx
 	);
 	// Reverse: tip is 1, base is N (idx 0 is base, idx N-1 is tip)
+	// The base of the chain is the last item in the array (oldest ancestor)
+	const baseChangeId =
+		chain.length > 0 ? chain[chain.length - 1].change_id : undefined;
+	// Create a short chain ID from the base's Change-Id (first 7 chars after 'I')
+	const chainId = baseChangeId ? baseChangeId.slice(1, 8) : undefined;
+
 	return {
 		inChain: chain.length > 1,
 		position: idx >= 0 && chain.length > 1 ? chain.length - idx : undefined,
 		length: chain.length > 1 ? chain.length : undefined,
+		chainId,
+		chainBaseChangeId: baseChangeId,
 	};
 }

@@ -109,6 +109,9 @@ class BatchReviewProvider implements Disposable {
 							`c/${change.project}/+/${change.number}`
 						) || undefined;
 				}
+				// Check if change has Code-Review +2
+				const hasCodeReviewPlus2 = this._hasCodeReviewPlus2(change);
+
 				return {
 					changeId: change.change_id, // Gerrit Change-Id (Ixxxx...)
 					changeID: `${change.project}~${change.branch}~${change.change_id}`,
@@ -121,6 +124,8 @@ class BatchReviewProvider implements Disposable {
 						accountID: change.owner._account_id,
 					},
 					updated: change.updated,
+					submittable: (change as any).submittable ?? false,
+					hasCodeReviewPlus2,
 					gerritUrl,
 				} as BatchReviewChange;
 			})

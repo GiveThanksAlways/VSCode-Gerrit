@@ -11,6 +11,10 @@ export interface ChainInfo {
 	chainColorClass?: string;
 	/** Whether this change has unsubmitted dependencies */
 	hasUnsubmittedDependencies?: boolean;
+	/** Short chain ID (first 7 chars of base change's Change-Id) */
+	chainId?: string;
+	/** Full Change-Id of the base (first) change in the chain */
+	chainBaseChangeId?: string;
 }
 
 interface ExpandableChangeItemProps {
@@ -208,14 +212,19 @@ export const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 									className={`chain-badge ${chainInfo.hasUnsubmittedDependencies ? 'chain-warning-badge' : ''}`}
 									title={
 										chainInfo.hasUnsubmittedDependencies
-											? `This change is part of a chain (${chainInfo.position} of ${chainInfo.length}) but has unsubmitted dependencies. Submit changes in order starting from #1.`
+											? `Chain ${chainInfo.chainId || '?'}: Position ${chainInfo.position} of ${chainInfo.length}\n\n⚠️ Has unsubmitted dependencies. Submit changes in order starting from #1.`
 											: chainInfo.position != null &&
 												  chainInfo.length != null
-												? `This change is part of a relation chain (${chainInfo.position} of ${chainInfo.length}).\n\nThe Batch view will submit them in order automatically for you. You just have to make sure you have a connected chain that goes in order 1,2,3...`
+												? `Chain ${chainInfo.chainId || '?'}: Position ${chainInfo.position} of ${chainInfo.length}\n\nThe Batch view will submit them in order automatically for you. You just have to make sure you have a connected chain that goes in order 1,2,3...`
 												: 'This change is part of a relation chain. Submit all changes in order, starting from the base.'
 									}
 								>
 									<span className="codicon codicon-link"></span>
+									{chainInfo.chainId && (
+										<span className="chain-id">
+											{chainInfo.chainId}
+										</span>
+									)}
 									{chainInfo.position != null &&
 										chainInfo.length != null && (
 											<span className="chain-position">

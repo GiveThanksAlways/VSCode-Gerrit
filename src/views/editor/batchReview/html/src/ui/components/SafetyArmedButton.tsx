@@ -82,9 +82,8 @@ export const SafetyArmedButton: VFC<SafetyArmedButtonProps> = ({
 				onClick={handleArmClick}
 				disabled={disabled}
 				className={`${buttonClassName} safety-unarmed`}
-				title={`${title} (click to arm)`}
+				title={title}
 			>
-				<span className="codicon codicon-shield"></span>
 				<span className={`codicon ${icon}`}></span>
 				{label}
 			</button>
