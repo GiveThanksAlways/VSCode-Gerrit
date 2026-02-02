@@ -198,6 +198,35 @@ export const BatchReviewPane: VFC = () => {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [state.batchChanges.length, state.batchChanges.map(c => c.changeId).join(',')]);
 
+	/**
+	 * When items are removed from the batch (via drag-drop or remove button),
+	 * clear their chain warning state. Chain warnings should only appear in batch view.
+	 */
+	useEffect(() => {
+		const batchChangeIds = new Set(state.batchChanges.map(c => c.changeId));
+		const changedIds = Array.from(chainInfoMap.keys()).filter(
+			id => !batchChangeIds.has(id) && chainInfoMap.get(id)?.hasUnsubmittedDependencies
+		);
+		
+		if (changedIds.length > 0) {
+			setChainInfoMap((prev) => {
+				const newMap = new Map(prev);
+				changedIds.forEach((id) => {
+					const entry = newMap.get(id);
+					if (entry) {
+						newMap.set(id, {
+							...entry,
+							hasUnsubmittedDependencies: false,
+							chainColorClass: undefined,
+						});
+					}
+				});
+				return newMap;
+			});
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [state.batchChanges.length, state.batchChanges.map(c => c.changeId).join(',')]);
+
 	const handleYourTurnSelection = (changeID: string, selected: boolean) => {
 		const newSet = new Set(selectedYourTurn);
 		if (selected) {
@@ -527,7 +556,6 @@ export const BatchReviewPane: VFC = () => {
 						onDrop={handleDrop}
 						fileViewMode={state.fileViewMode ?? 'tree'}
 						onFileViewModeChange={handleFileViewModeChange}
-						chainInfoMap={chainInfoMap}
 					/>
 					<div className="action-buttons">
 						<button

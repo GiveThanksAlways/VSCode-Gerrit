@@ -541,6 +541,11 @@ class BatchReviewProvider implements Disposable {
 			this._state.incomingChanges.push(...newChanges);
 		}
 
+		// Clear the hasCodeReviewPlus2 flag - the green checkmark should only show in batch view
+		for (const change of changesToRemove) {
+			change.hasCodeReviewPlus2 = false;
+		}
+
 		await this._updateView();
 	}
 
@@ -554,6 +559,8 @@ class BatchReviewProvider implements Disposable {
 			) {
 				this._state.incomingChanges.push(change);
 			}
+			// Clear the hasCodeReviewPlus2 flag - the green checkmark should only show in batch view
+			change.hasCodeReviewPlus2 = false;
 		}
 		this._state.batchChanges = [];
 		await this._updateView();
