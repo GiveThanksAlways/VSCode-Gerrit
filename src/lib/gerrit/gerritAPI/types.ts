@@ -134,6 +134,11 @@ export interface GerritChangeResponse {
 	revisions?: GerritRevisions;
 	owner: GerritUserResponse | GerritDetailedUserResponse;
 	_more_changes?: boolean;
+	submittable?: boolean;
+	requirements?: Array<{
+		status: string;
+		fallback_text: string;
+	}>;
 }
 
 export enum GerritCommentSide {

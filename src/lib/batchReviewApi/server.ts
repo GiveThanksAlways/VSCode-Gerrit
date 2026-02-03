@@ -22,11 +22,28 @@ const MAX_BODY_SIZE = 1024 * 1024;
 const FIXED_PORT = 45193;
 
 /**
+ * Severity levels for AI code review scoring.
+ * Follows software engineering standards for issue classification.
+ */
+export type SeverityLevel = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'APPROVED';
+
+/**
+ * Valid severity levels for validation.
+ */
+export const VALID_SEVERITIES: readonly SeverityLevel[] = [
+	'CRITICAL',
+	'HIGH',
+	'MEDIUM',
+	'LOW',
+	'APPROVED',
+] as const;
+
+/**
  * Score mapping for changes being added to batch.
- * Maps changeID to AI confidence score (1-10).
+ * Maps changeID to severity level for AI confidence/code review.
  */
 export interface ScoreMap {
-	[changeID: string]: number;
+	[changeID: string]: SeverityLevel;
 }
 
 export interface BatchReviewApiCallbacks {
@@ -155,14 +172,40 @@ export function createBatchReviewApiServer(
 						for (const [changeID, score] of Object.entries(
 							data.scores
 						)) {
+							// Reject numeric scores (1-10) with validation error
+							if (typeof score === 'number') {
+								console.error(
+									'[BatchReviewAPI] Numeric scores are no longer supported. Use severity levels: CRITICAL, HIGH, MEDIUM, LOW, APPROVED'
+								);
+								res.writeHead(400);
+								res.end(
+									JSON.stringify({
+										error: 'Numeric scores (1-10) are no longer supported. Use severity levels: CRITICAL, HIGH, MEDIUM, LOW, APPROVED',
+										validSeverities: VALID_SEVERITIES,
+									})
+								);
+								return;
+							}
+							// Validate severity string
 							if (
-								typeof score === 'number' &&
-								Number.isFinite(score) &&
-								score >= 1 &&
-								score <= 10
+								typeof score === 'string' &&
+								VALID_SEVERITIES.includes(
+									score as SeverityLevel
+								)
 							) {
-								// Round to integer for consistency
-								scores[changeID] = Math.round(score);
+								scores[changeID] = score as SeverityLevel;
+							} else {
+								console.error(
+									`[BatchReviewAPI] Invalid severity level: ${score}. Valid values: ${VALID_SEVERITIES.join(', ')}`
+								);
+								res.writeHead(400);
+								res.end(
+									JSON.stringify({
+										error: `Invalid severity level: ${score}. Valid values: ${VALID_SEVERITIES.join(', ')}`,
+										validSeverities: VALID_SEVERITIES,
+									})
+								);
+								return;
 							}
 						}
 					}

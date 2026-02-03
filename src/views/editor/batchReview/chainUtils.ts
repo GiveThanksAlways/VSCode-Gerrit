@@ -79,9 +79,19 @@ export async function getOrderedBatch(changeIds: string[]): Promise<string[]> {
  * Checks if a change is part of a chain (more than one in /related).
  * Looks up the current commit for the given changeId, then finds its position in the chain by commit hash.
  */
+export interface ChainInfoResult {
+	inChain: boolean;
+	position?: number;
+	length?: number;
+	/** Change number of the base (first) change in the chain */
+	chainNumber?: number;
+	/** Full Change-Id of the base (first) change in the chain */
+	chainBaseChangeId?: string;
+}
+
 export async function isChangeChained(
 	changeId: string
-): Promise<{ inChain: boolean; position?: number; length?: number }> {
+): Promise<ChainInfoResult> {
 	const api = await getAPI();
 	if (!api) {
 		console.warn('[isChangeChained] No API instance for', changeId);
@@ -136,10 +146,106 @@ export async function isChangeChained(
 		'idx:',
 		idx
 	);
-	// Reverse: tip is 1, base is N (idx 0 is base, idx N-1 is tip)
+
+	// Fetch status for all changes in chain to filter out merged ones
+	const chainWithStatus: Array<{
+		change_id: string;
+		commit: string;
+		status?: string;
+	}> = [];
+	for (const entry of chain) {
+		try {
+			const detailResp = await api['_tryRequest']({
+				path: `changes/${entry.change_id}/detail/`,
+				method: 'GET',
+			});
+			if (
+				detailResp &&
+				api['_assertRequestSucceeded'](detailResp)
+			) {
+				const detailJson = api['_tryParseJSON']<{ status: string }>(
+					detailResp.strippedBody
+				);
+				chainWithStatus.push({
+					change_id: entry.change_id,
+					commit: entry.commit,
+					status: detailJson?.status,
+				});
+			} else {
+				chainWithStatus.push({ ...entry });
+			}
+		} catch (err) {
+			console.warn(
+				'[isChangeChained] Error fetching status for',
+				entry.change_id,
+				err
+			);
+			chainWithStatus.push({ ...entry });
+		}
+	}
+
+	// Filter out merged changes - only count NEW changes in the chain
+	const activeChain = chainWithStatus.filter((c) => c.status !== 'MERGED');
+	const mergedCount = chainWithStatus.length - activeChain.length;
+
+	console.log(
+		'[isChangeChained] Chain with status for',
+		changeId,
+		'- Total:',
+		chainWithStatus.length,
+		'Merged:',
+		mergedCount,
+		'Active:',
+		activeChain.length,
+		'Chain:',
+		chainWithStatus
+	);
+
+	// Find index in active chain (excluding merged changes)
+	const activeIdx = activeChain.findIndex(
+		(entry) => entry.change_id === gerritChangeId
+	);
+
+	// The base of the chain is the last item in the active array (oldest active ancestor)
+	const baseChangeId =
+		activeChain.length > 0
+			? activeChain[activeChain.length - 1].change_id
+			: undefined;
+
+	// Fetch the change number for the base change
+	let chainNumber: number | undefined;
+	if (baseChangeId) {
+		try {
+			const baseDetailResp = await api['_tryRequest']({
+				path: `changes/${baseChangeId}/detail/`,
+				method: 'GET',
+			});
+			if (
+				baseDetailResp &&
+				api['_assertRequestSucceeded'](baseDetailResp)
+			) {
+				const baseDetailJson = api['_tryParseJSON']<{
+					_number: number;
+				}>(baseDetailResp.strippedBody);
+				chainNumber = baseDetailJson?._number;
+			}
+		} catch (err) {
+			console.warn(
+				'[isChangeChained] Error fetching base change detail for',
+				baseChangeId,
+				err
+			);
+		}
+	}
+
 	return {
-		inChain: chain.length > 1,
-		position: idx >= 0 && chain.length > 1 ? chain.length - idx : undefined,
-		length: chain.length > 1 ? chain.length : undefined,
+		inChain: activeChain.length > 1,
+		position:
+			activeIdx >= 0 && activeChain.length > 1
+				? activeChain.length - activeIdx
+				: undefined,
+		length: activeChain.length > 1 ? activeChain.length : undefined,
+		chainNumber,
+		chainBaseChangeId: baseChangeId,
 	};
 }

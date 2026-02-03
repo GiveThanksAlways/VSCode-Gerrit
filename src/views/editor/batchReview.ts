@@ -20,22 +20,27 @@ import {
 	window,
 } from 'vscode';
 import {
+	BatchReviewChange,
+	BatchReviewFileInfo,
+	TypedWebviewPanel,
+	SeverityLevel,
+} from './batchReview/types';
+import {
 	createBatchReviewApiServer,
 	BatchReviewApiServer,
 	ScoreMap,
 } from '../../lib/batchReviewApi/server';
 import {
-	BatchReviewChange,
-	BatchReviewFileInfo,
-	TypedWebviewPanel,
-} from './batchReview/types';
+	getOrderedBatch,
+	isChangeChained,
+	ChainInfoResult,
+} from './batchReview/chainUtils';
 import {
 	DefaultChangeFilter,
 	GerritChangeFilter,
 } from '../../lib/gerrit/gerritAPI/filters';
 import { FileTreeView } from '../activityBar/changes/changeTreeView/fileTreeView';
 import { GerritRevisionFileStatus } from '../../lib/gerrit/gerritAPI/types';
-import { getOrderedBatch, isChangeChained } from './batchReview/chainUtils';
 import { BatchReviewState, BatchReviewPerson } from './batchReview/state';
 import { GerritChange } from '../../lib/gerrit/gerritAPI/gerritChange';
 import { GerritGroup } from '../../lib/gerrit/gerritAPI/gerritGroup';
@@ -55,6 +60,8 @@ class BatchReviewProvider implements Disposable {
 		fileViewMode: 'tree',
 	};
 	private _apiServer: BatchReviewApiServer | null = null;
+	// Cache chain info to avoid repeated API calls
+	private _chainInfoCache: Map<string, ChainInfoResult> = new Map();
 
 	private constructor(
 		private readonly _gerritRepo: Repository,
@@ -109,6 +116,9 @@ class BatchReviewProvider implements Disposable {
 							`c/${change.project}/+/${change.number}`
 						) || undefined;
 				}
+				// Check if change has Code-Review +2
+				const hasCodeReviewPlus2 = this._hasCodeReviewPlus2(change);
+
 				return {
 					changeId: change.change_id, // Gerrit Change-Id (Ixxxx...)
 					changeID: `${change.project}~${change.branch}~${change.change_id}`,
@@ -121,6 +131,8 @@ class BatchReviewProvider implements Disposable {
 						accountID: change.owner._account_id,
 					},
 					updated: change.updated,
+					submittable: (change as any).submittable ?? false,
+					hasCodeReviewPlus2,
 					gerritUrl,
 				} as BatchReviewChange;
 			})
@@ -299,7 +311,7 @@ class BatchReviewProvider implements Disposable {
 			'[BatchReview] Changes to add:',
 			changesToAdd.map((c) => ({
 				changeID: c.changeID,
-				score: c.score,
+				severity: c.severity,
 			}))
 		);
 
@@ -313,7 +325,7 @@ class BatchReviewProvider implements Disposable {
 			this._state.incomingChanges.map((c) => c.changeID)
 		);
 
-		// Prepare changes to insert (avoid duplicates, apply scores)
+		// Prepare changes to insert (avoid duplicates, apply severities)
 		const newChanges: BatchReviewChange[] = [];
 		for (const change of changesToAdd) {
 			if (
@@ -321,16 +333,16 @@ class BatchReviewProvider implements Disposable {
 					(c) => c.changeID === change.changeID
 				)
 			) {
-				// Always set score property, even if not present
+				// Apply severity if provided from API
 				if (scores && scores[change.changeID] !== undefined) {
 					console.log(
-						`[BatchReview] Setting score for ${change.changeID}:`,
+						`[BatchReview] Setting severity for ${change.changeID}:`,
 						scores[change.changeID]
 					);
-					change.score = Number(scores[change.changeID]);
+					change.severity = scores[change.changeID];
 				} else {
-					// If no score provided, ensure score is undefined or 0
-					change.score = change.score ?? undefined;
+					// If no severity provided, keep existing or leave undefined
+					change.severity = change.severity ?? undefined;
 				}
 				newChanges.push(change);
 			} else {
@@ -340,15 +352,7 @@ class BatchReviewProvider implements Disposable {
 			}
 		}
 
-		console.log(
-			'[BatchReview] newChanges to insert into batch:',
-			newChanges.map((c) => ({
-				changeID: c.changeID,
-				score: c.score,
-			}))
-		);
-
-		// Insert at dropIndex if provided, otherwise append and sort by score
+		// Insert at dropIndex if provided, otherwise append
 		if (
 			msg.body.dropIndex !== undefined &&
 			msg.body.dropIndex >= 0 &&
@@ -362,11 +366,6 @@ class BatchReviewProvider implements Disposable {
 			this._state.batchChanges.splice(insertAt, 0, ...newChanges);
 		} else {
 			this._state.batchChanges.push(...newChanges);
-			this._state.batchChanges.sort((a, b) => {
-				const scoreA = a.score ?? 0;
-				const scoreB = b.score ?? 0;
-				return scoreB - scoreA;
-			});
 		}
 
 		// Log state after processing
@@ -374,7 +373,7 @@ class BatchReviewProvider implements Disposable {
 			incoming: this._state.incomingChanges.map((c) => c.changeID),
 			batch: this._state.batchChanges.map((c) => ({
 				changeID: c.changeID,
-				score: c.score,
+				severity: c.severity,
 			})),
 		});
 
@@ -383,7 +382,150 @@ class BatchReviewProvider implements Disposable {
 			await this._fetchLabels();
 		}
 
+		// Update view immediately (don't wait for chain ordering)
 		await this._updateView();
+
+		// Then organize chains in background (async, don't block)
+		this._organizeChainGroupsAsync();
+	}
+
+	/**
+	 * Get chain info for a change, using cache when available.
+	 * This avoids repeated API calls for the same change.
+	 */
+	private async _getCachedChainInfo(
+		changeId: string
+	): Promise<ChainInfoResult> {
+		// Check cache first
+		const cached = this._chainInfoCache.get(changeId);
+		if (cached) {
+			return cached;
+		}
+
+		// Fetch and cache
+		const info = await isChangeChained(changeId);
+		this._chainInfoCache.set(changeId, info);
+		return info;
+	}
+
+	/**
+	 * Reorganize batch changes to group chain items together in proper order.
+	 * This runs asynchronously in the background and updates the view when done.
+	 * Chain items are grouped by their chain base and ordered by position.
+	 */
+	private async _organizeChainGroupsAsync(): Promise<void> {
+		console.log('[BatchReview] Starting async chain organization...');
+
+		// Fetch chain info for all batch items (using cache)
+		const chainInfos = new Map<
+			string,
+			{ position: number; chainBase: string }
+		>();
+
+		// Process in parallel to speed up
+		const promises = this._state.batchChanges.map(async (change) => {
+			const chainInfo = await this._getCachedChainInfo(change.changeId);
+			if (chainInfo.inChain && chainInfo.chainBaseChangeId) {
+				return {
+					changeID: change.changeID,
+					position: chainInfo.position ?? 999,
+					chainBase: chainInfo.chainBaseChangeId,
+				};
+			}
+			return null;
+		});
+
+		const results = await Promise.all(promises);
+		for (const result of results) {
+			if (result) {
+				chainInfos.set(result.changeID, {
+					position: result.position,
+					chainBase: result.chainBase,
+				});
+			}
+		}
+
+		// Group by chain base
+		const chainGroups = new Map<
+			string,
+			{ change: BatchReviewChange; position: number }[]
+		>();
+		const standaloneChanges: BatchReviewChange[] = [];
+
+		for (const change of this._state.batchChanges) {
+			const info = chainInfos.get(change.changeID);
+			if (info) {
+				const group = chainGroups.get(info.chainBase) ?? [];
+				group.push({ change, position: info.position });
+				chainGroups.set(info.chainBase, group);
+			} else {
+				standaloneChanges.push(change);
+			}
+		}
+
+		// Severity priority order: CRITICAL (highest) > HIGH > MEDIUM > LOW > APPROVED (lowest)
+		const severityPriority = (
+			severity: SeverityLevel | undefined
+		): number => {
+			switch (severity) {
+				case 'CRITICAL':
+					return 5;
+				case 'HIGH':
+					return 4;
+				case 'MEDIUM':
+					return 3;
+				case 'LOW':
+					return 2;
+				case 'APPROVED':
+					return 1;
+				default:
+					return 0; // No severity = lowest priority
+			}
+		};
+
+		// Sort standalone by severity (highest priority first)
+		standaloneChanges.sort(
+			(a, b) =>
+				severityPriority(b.severity) - severityPriority(a.severity)
+		);
+
+		// Sort each chain by position (base first = position 1)
+		const chainArrays: BatchReviewChange[][] = [];
+		for (const [, group] of chainGroups) {
+			group.sort((a, b) => a.position - b.position);
+			chainArrays.push(group.map((g) => g.change));
+		}
+
+		// Sort chain groups by the highest severity within each chain (to prioritize)
+		chainArrays.sort((a, b) => {
+			const maxPriorityA = Math.max(
+				...a.map((c) => severityPriority(c.severity))
+			);
+			const maxPriorityB = Math.max(
+				...b.map((c) => severityPriority(c.severity))
+			);
+			return maxPriorityB - maxPriorityA;
+		});
+
+		// Combine: standalone first, then chains in order
+		const newOrder = [...standaloneChanges, ...chainArrays.flat()];
+
+		// Only update if order actually changed
+		const orderChanged = newOrder.some(
+			(c, i) => this._state.batchChanges[i]?.changeID !== c.changeID
+		);
+
+		if (orderChanged) {
+			console.log(
+				'[BatchReview] Chain organization complete, updating view'
+			);
+			this._state.batchChanges = newOrder;
+			await this._updateView();
+		} else {
+			console.log(
+				'[BatchReview] Chain organization complete, no changes needed'
+			);
+		}
 	}
 
 	private async _handleRemoveFromBatch(
@@ -427,6 +569,11 @@ class BatchReviewProvider implements Disposable {
 			this._state.incomingChanges.push(...newChanges);
 		}
 
+		// Clear the hasCodeReviewPlus2 flag - the green checkmark should only show in batch view
+		for (const change of changesToRemove) {
+			change.hasCodeReviewPlus2 = false;
+		}
+
 		await this._updateView();
 	}
 
@@ -440,6 +587,8 @@ class BatchReviewProvider implements Disposable {
 			) {
 				this._state.incomingChanges.push(change);
 			}
+			// Clear the hasCodeReviewPlus2 flag - the green checkmark should only show in batch view
+			change.hasCodeReviewPlus2 = false;
 		}
 		this._state.batchChanges = [];
 		await this._updateView();
@@ -701,15 +850,20 @@ class BatchReviewProvider implements Disposable {
 		);
 		for (const change of orderedChanges) {
 			try {
-				// Optionally, re-fetch to ensure submittable
+				// Re-fetch with SUBMITTABLE option to get current submittable status
 				const changeObj = await GerritChange.getChangeOnce(
-					change!.changeID
+					change!.changeID,
+					[GerritAPIWith.SUBMITTABLE, GerritAPIWith.DETAILED_LABELS]
 				);
 				if (!changeObj) {
 					submitFail++;
 					submitErrors.push(`Change not found: ${change!.changeID}`);
 					continue;
 				}
+				console.log(
+					`[BatchReview] Change ${change!.changeID} submittable:`,
+					(changeObj as any).submittable
+				);
 				if (!(changeObj as any).submittable) {
 					submitFail++;
 					// Log requirements and label status for debugging
@@ -1214,28 +1368,36 @@ class BatchReviewProvider implements Disposable {
 				if (found) {
 					gerritChangeId = found.changeId;
 				} else {
-					// If not found, fetch detail to get Gerrit Change-Id
-					const api = await getAPI();
-					if (api) {
-						try {
-							const detailResp = await api['_tryRequest']({
-								path: `changes/${changeID}/detail/`,
-								method: 'GET',
-							});
-							if (
-								detailResp &&
-								api['_assertRequestSucceeded'](detailResp)
-							) {
-								const detailJson = api['_tryParseJSON']<{
-									change_id: string;
-								}>(detailResp.strippedBody);
-								gerritChangeId = detailJson?.change_id;
+					// Try incomingChanges
+					const foundIncoming = this._state.incomingChanges.find(
+						(c) => c.changeID === changeID
+					);
+					if (foundIncoming) {
+						gerritChangeId = foundIncoming.changeId;
+					} else {
+						// If not found, fetch detail to get Gerrit Change-Id
+						const api = await getAPI();
+						if (api) {
+							try {
+								const detailResp = await api['_tryRequest']({
+									path: `changes/${changeID}/detail/`,
+									method: 'GET',
+								});
+								if (
+									detailResp &&
+									api['_assertRequestSucceeded'](detailResp)
+								) {
+									const detailJson = api['_tryParseJSON']<{
+										change_id: string;
+									}>(detailResp.strippedBody);
+									gerritChangeId = detailJson?.change_id;
+								}
+							} catch (err) {
+								console.warn(
+									'[batchReview] Error fetching change detail for chain info',
+									{ changeID, err }
+								);
 							}
-						} catch (err) {
-							console.warn(
-								'[batchReview] Error fetching change detail for chain info',
-								{ changeID, err }
-							);
 						}
 					}
 				}
@@ -1250,7 +1412,8 @@ class BatchReviewProvider implements Disposable {
 					});
 					break;
 				}
-				const info = await isChangeChained(gerritChangeId);
+				// Use cached chain info
+				const info = await this._getCachedChainInfo(gerritChangeId);
 				await this._panel?.webview.postMessage({
 					type: 'chainInfo',
 					body: { changeID, ...info },

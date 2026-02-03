@@ -20,6 +20,12 @@ export interface BatchReviewFileInfo {
 	linesDeleted: number;
 }
 
+/**
+ * Severity levels for AI code review scoring.
+ * Follows software engineering standards for issue classification.
+ */
+export type SeverityLevel = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'APPROVED';
+
 export interface BatchReviewChange {
 	changeID: string; // Gerrit REST id (project~branch~Ixxxx)
 	changeId: string; // Gerrit Change-Id (Ixxxx...)
@@ -33,10 +39,14 @@ export interface BatchReviewChange {
 	};
 	updated: string;
 	/**
-	 * Optional AI confidence score (1-10) for ranking.
-	 * Higher scores indicate higher AI confidence.
+	 * Optional AI severity level for code review scoring.
+	 * CRITICAL = needs immediate attention
+	 * HIGH = significant issues found
+	 * MEDIUM = moderate concerns
+	 * LOW = minor issues
+	 * APPROVED = no issues found
 	 */
-	score?: number;
+	severity?: SeverityLevel;
 	/**
 	 * Files changed in this commit. Loaded on demand when expanded.
 	 */

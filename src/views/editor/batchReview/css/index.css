@@ -253,6 +253,8 @@ body {
 .change-item {
 	border-bottom: 1px solid var(--vscode-panel-border);
 	transition: background-color 0.15s;
+	cursor: pointer;
+	user-select: none;
 }
 
 .change-item:last-child {
@@ -669,6 +671,47 @@ button:disabled {
 
 .score-9,
 .score-10 {
+	background-color: rgba(35, 134, 54, 0.3);
+	color: #3fb950;
+}
+
+/* Severity badges for AI code review */
+.change-severity {
+	font-size: 10px;
+	font-weight: 700;
+	padding: 2px 6px;
+	border-radius: 10px;
+	margin-left: auto;
+	flex-shrink: 0;
+	text-transform: uppercase;
+}
+
+/* CRITICAL - Red (highest severity) */
+.severity-critical {
+	background-color: rgba(248, 81, 73, 0.3);
+	color: #f85149;
+}
+
+/* HIGH - Orange */
+.severity-high {
+	background-color: rgba(255, 166, 87, 0.3);
+	color: #ffa657;
+}
+
+/* MEDIUM - Yellow */
+.severity-medium {
+	background-color: rgba(210, 153, 34, 0.3);
+	color: #d29922;
+}
+
+/* LOW - Light green */
+.severity-low {
+	background-color: rgba(130, 209, 101, 0.3);
+	color: #56d364;
+}
+
+/* APPROVED - Green (no issues) */
+.severity-approved {
 	background-color: rgba(35, 134, 54, 0.3);
 	color: #3fb950;
 }
@@ -1655,6 +1698,7 @@ input:focus-visible,
 
 .section-content {
 	padding: 0 10px 10px 10px;
+	overflow: visible;
 }
 
 /* Collapsed section styling */
@@ -1773,4 +1817,316 @@ input:focus-visible,
 }
 .chain-badge .codicon-link {
 	font-size: 14px;
+}
+
+.chain-badge .chain-position {
+	font-size: 10px;
+	margin-left: 2px;
+	opacity: 0.8;
+}
+
+.chain-badge .chain-id {
+	font-size: 10px;
+	margin-left: 3px;
+	font-family: var(--vscode-editor-font-family), monospace;
+	opacity: 0.9;
+	background: rgba(255, 255, 255, 0.1);
+	padding: 1px 4px;
+	border-radius: 3px;
+}
+
+/* Clickable chain badge */
+.chain-badge.clickable {
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+
+.chain-badge.clickable:hover {
+	opacity: 1;
+	background: rgba(255, 255, 255, 0.1);
+	border-radius: 4px;
+	padding: 2px 4px;
+	margin-left: 4px;
+}
+
+.chain-badge.clickable:active {
+	transform: scale(0.95);
+}
+
+/* Checkbox wrapper for better alignment and click area */
+.change-checkbox-wrapper {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-right: 8px;
+	padding: 4px;
+	cursor: pointer;
+	border-radius: 4px;
+	transition: background-color 0.1s ease;
+}
+
+.change-checkbox-wrapper:hover {
+	background-color: rgba(255, 255, 255, 0.05);
+}
+
+.change-checkbox-wrapper:focus {
+	outline: 1px solid var(--vscode-focusBorder);
+	outline-offset: -1px;
+}
+
+.change-checkbox-wrapper .change-checkbox {
+	width: 16px;
+	height: 16px;
+	cursor: pointer;
+	accent-color: var(--vscode-checkbox-background);
+	pointer-events: none; /* Let wrapper handle clicks */
+}
+
+/* =========================================
+   Safety Armed Button Styles
+   Popup overlay design - button size stays consistent
+   ========================================= */
+
+.safety-button-wrapper {
+	position: relative;
+	display: flex;
+	flex: 1;
+	overflow: visible;
+}
+
+/* The button inside the wrapper should fill the wrapper */
+.safety-button-wrapper > button {
+	flex: 1;
+	width: 100%;
+}
+
+/* When armed, highlight the button slightly */
+.safety-button-wrapper button.safety-active {
+	border-color: rgba(255, 193, 7, 0.6);
+	box-shadow: 0 0 8px rgba(255, 193, 7, 0.3);
+}
+
+/* Popup that appears below the button */
+.safety-popup {
+	position: absolute;
+	top: calc(100% + 8px);
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 9999 !important;
+
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 12px;
+	min-width: 200px;
+
+	background: var(--vscode-editorWidget-background, #252526);
+	border: 1px solid rgba(255, 193, 7, 0.5);
+	border-radius: 8px;
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+
+	animation: popupFadeIn 0.15s ease-out;
+}
+
+@keyframes popupFadeIn {
+	from {
+		opacity: 0;
+		transform: translateX(-50%) translateY(-4px);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(-50%) translateY(0);
+	}
+}
+
+/* Arrow pointing up to the button */
+.safety-popup::after {
+	content: '';
+	position: absolute;
+	bottom: 100%;
+	left: 50%;
+	transform: translateX(-50%);
+	border: 8px solid transparent;
+	border-bottom-color: rgba(255, 193, 7, 0.5);
+}
+
+.safety-popup-header {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	font-size: 13px;
+	font-weight: 600;
+	color: #ffc107;
+}
+
+.safety-popup-header .codicon {
+	font-size: 16px;
+}
+
+.safety-popup-actions {
+	display: flex;
+	gap: 8px;
+}
+
+.safety-popup-confirm {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	padding: 6px 12px;
+	font-size: 12px;
+	font-weight: 500;
+	background: linear-gradient(
+		135deg,
+		rgba(255, 193, 7, 0.25),
+		rgba(255, 152, 0, 0.2)
+	);
+	border: 1px solid rgba(255, 193, 7, 0.5);
+	border-radius: 4px;
+	color: var(--vscode-foreground);
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+
+.safety-popup-confirm:hover:not(:disabled) {
+	background: linear-gradient(
+		135deg,
+		rgba(255, 193, 7, 0.4),
+		rgba(255, 152, 0, 0.3)
+	);
+}
+
+.safety-popup-confirm:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.safety-popup-cancel {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	background: rgba(255, 255, 255, 0.08);
+	border: 1px solid rgba(255, 255, 255, 0.15);
+	border-radius: 4px;
+	color: var(--vscode-foreground);
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+
+.safety-popup-cancel:hover {
+	background: rgba(255, 255, 255, 0.15);
+}
+
+/* =========================================
+   Chain Highlighting and Warning Styles
+   ========================================= */
+
+/* Chain warning banner */
+.chain-warnings {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin-top: 12px;
+	padding: 0 4px;
+}
+
+.chain-warning-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 14px;
+	background: linear-gradient(
+		135deg,
+		rgba(255, 152, 0, 0.15) 0%,
+		rgba(255, 87, 34, 0.1) 100%
+	);
+	border: 1px solid rgba(255, 152, 0, 0.4);
+	border-radius: 6px;
+	font-size: 13px;
+	color: #ffa726;
+}
+
+.chain-warning-item .codicon {
+	font-size: 16px;
+	flex-shrink: 0;
+}
+
+/* Chain color classes for visual grouping */
+.change-item.in-chain {
+	position: relative;
+}
+
+.change-item.chain-color-1 {
+	border-left: 3px solid #4caf50 !important;
+	box-shadow: inset 4px 0 8px -4px rgba(76, 175, 80, 0.3);
+}
+
+.change-item.chain-color-2 {
+	border-left: 3px solid #2196f3 !important;
+	box-shadow: inset 4px 0 8px -4px rgba(33, 150, 243, 0.3);
+}
+
+.change-item.chain-color-3 {
+	border-left: 3px solid #9c27b0 !important;
+	box-shadow: inset 4px 0 8px -4px rgba(156, 39, 176, 0.3);
+}
+
+.change-item.chain-color-4 {
+	border-left: 3px solid #ff9800 !important;
+	box-shadow: inset 4px 0 8px -4px rgba(255, 152, 0, 0.3);
+}
+
+.change-item.chain-color-5 {
+	border-left: 3px solid #00bcd4 !important;
+	box-shadow: inset 4px 0 8px -4px rgba(0, 188, 212, 0.3);
+}
+
+/* Chain warning glow - for items with unsubmitted dependencies */
+.change-item.chain-warning-glow {
+	border-left: 3px solid #ff5722 !important;
+	box-shadow: inset 4px 0 12px -4px rgba(255, 87, 34, 0.4);
+	animation: chainWarningGlow 2s ease-in-out infinite;
+}
+
+@keyframes chainWarningGlow {
+	0%,
+	100% {
+		box-shadow: inset 4px 0 12px -4px rgba(255, 87, 34, 0.4);
+	}
+	50% {
+		box-shadow: inset 4px 0 16px -2px rgba(255, 87, 34, 0.6);
+	}
+}
+
+/* Chain badge warning style */
+.chain-badge.chain-warning-badge {
+	color: #ff5722;
+	animation: badgeWarning 1.5s ease-in-out infinite;
+}
+
+@keyframes badgeWarning {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.6;
+	}
+}
+
+/* Ensure parent containers do not clip the popup */
+.batch-review-container,
+.review-panel.batch-operations,
+.section-content {
+	overflow: visible !important;
+}
+
+/* Make sure the popup is always on top */
+.safety-popup {
+	z-index: 9999 !important;
 }
