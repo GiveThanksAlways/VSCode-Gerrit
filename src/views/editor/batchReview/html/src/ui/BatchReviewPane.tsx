@@ -674,7 +674,7 @@ export const BatchReviewPane: VFC = () => {
 											icon="codicon-pass"
 											label={`+2 All (${state.batchChanges.length})`}
 											title="Apply Code-Review +2 to all batch changes"
-											confirmLabel={`+2 All ${state.batchChanges.length}`}
+											confirmLabel={`+2 All (${state.batchChanges.length})`}
 											buttonId="plus2all"
 											isArmed={
 												armedButtonId === 'plus2all'

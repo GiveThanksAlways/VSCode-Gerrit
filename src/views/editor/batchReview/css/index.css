@@ -1698,6 +1698,7 @@ input:focus-visible,
 
 .section-content {
 	padding: 0 10px 10px 10px;
+	overflow: visible;
 }
 
 /* Collapsed section styling */
@@ -1888,7 +1889,15 @@ input:focus-visible,
 
 .safety-button-wrapper {
 	position: relative;
-	display: inline-flex;
+	display: flex;
+	flex: 1;
+	overflow: visible;
+}
+
+/* The button inside the wrapper should fill the wrapper */
+.safety-button-wrapper > button {
+	flex: 1;
+	width: 100%;
 }
 
 /* When armed, highlight the button slightly */
@@ -1897,19 +1906,19 @@ input:focus-visible,
 	box-shadow: 0 0 8px rgba(255, 193, 7, 0.3);
 }
 
-/* Popup that appears above/below the button */
+/* Popup that appears below the button */
 .safety-popup {
 	position: absolute;
-	bottom: calc(100% + 8px);
+	top: calc(100% + 8px);
 	left: 50%;
 	transform: translateX(-50%);
-	z-index: 100;
+	z-index: 9999 !important;
 
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
 	padding: 12px;
-	min-width: 180px;
+	min-width: 200px;
 
 	background: var(--vscode-editorWidget-background, #252526);
 	border: 1px solid rgba(255, 193, 7, 0.5);
@@ -1922,7 +1931,7 @@ input:focus-visible,
 @keyframes popupFadeIn {
 	from {
 		opacity: 0;
-		transform: translateX(-50%) translateY(4px);
+		transform: translateX(-50%) translateY(-4px);
 	}
 	to {
 		opacity: 1;
@@ -1930,15 +1939,15 @@ input:focus-visible,
 	}
 }
 
-/* Arrow pointing down to the button */
+/* Arrow pointing up to the button */
 .safety-popup::after {
 	content: '';
 	position: absolute;
-	top: 100%;
+	bottom: 100%;
 	left: 50%;
 	transform: translateX(-50%);
 	border: 8px solid transparent;
-	border-top-color: rgba(255, 193, 7, 0.5);
+	border-bottom-color: rgba(255, 193, 7, 0.5);
 }
 
 .safety-popup-header {
@@ -2108,4 +2117,16 @@ input:focus-visible,
 	50% {
 		opacity: 0.6;
 	}
+}
+
+/* Ensure parent containers do not clip the popup */
+.batch-review-container,
+.review-panel.batch-operations,
+.section-content {
+	overflow: visible !important;
+}
+
+/* Make sure the popup is always on top */
+.safety-popup {
+	z-index: 9999 !important;
 }
