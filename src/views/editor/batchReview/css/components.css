@@ -1,0 +1,278 @@
+/* ============================================
+   UI Components - Buttons, controls, inputs
+   ============================================ */
+
+.refresh-button {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 12px;
+	background-color: var(--vscode-button-secondaryBackground);
+	color: var(--vscode-button-secondaryForeground);
+	border: none;
+	cursor: pointer;
+	border-radius: 2px;
+	border-radius: 6px;
+	box-shadow: var(--batch-shadow-sm);
+}
+
+.refresh-button:hover {
+	background-color: var(--vscode-button-secondaryHoverBackground);
+}
+
+/* API Status Indicator */
+.api-status {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 10px;
+	border-radius: 12px;
+	font-size: 12px;
+	font-weight: 500;
+	gap: 8px;
+	padding: 6px 14px;
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: 0.3px;
+	box-shadow: var(--batch-shadow-sm);
+}
+
+.api-status-running {
+	background-color: rgba(35, 134, 54, 0.2);
+	color: #3fb950;
+	background: linear-gradient(
+		135deg,
+		rgba(35, 134, 54, 0.25) 0%,
+		rgba(35, 134, 54, 0.15) 100%
+	);
+	border: 1px solid rgba(63, 185, 80, 0.3);
+	animation: statusPulse 2s ease-in-out infinite;
+}
+
+.api-status-running .codicon {
+	font-size: 14px;
+}
+
+.api-port {
+	font-family: var(--vscode-editor-font-family), monospace;
+}
+
+@keyframes statusPulse {
+	0%,
+	100% {
+		box-shadow: 0 0 0 0 rgba(63, 185, 80, 0.2);
+	}
+	50% {
+		box-shadow: 0 0 0 4px rgba(63, 185, 80, 0.1);
+	}
+}
+
+.button-primary {
+	background-color: var(--vscode-button-background);
+	color: var(--vscode-button-foreground);
+	background: var(--batch-gradient-primary);
+	box-shadow: var(--batch-shadow-sm);
+}
+
+.button-primary:hover:not(:disabled) {
+	background-color: var(--vscode-button-hoverBackground);
+}
+
+.button-secondary {
+	background-color: var(--vscode-button-secondaryBackground);
+	color: var(--vscode-button-secondaryForeground);
+	background: var(--batch-gradient-secondary);
+}
+
+.button-secondary:hover:not(:disabled) {
+	background-color: var(--vscode-button-secondaryHoverBackground);
+}
+
+.button-vote {
+	flex: 1;
+	justify-content: center;
+	font-size: 14px;
+	padding: 10px 20px;
+}
+
+.button-submit,
+.button-send {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	padding: 8px 16px;
+	border: none;
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 13px;
+	font-weight: 500;
+	padding: 12px 20px;
+	border-radius: 8px;
+	font-size: 14px;
+	font-weight: 600;
+	letter-spacing: 0.3px;
+}
+
+.button-submit {
+	background-color: var(--vscode-button-background);
+	color: var(--vscode-button-foreground);
+	background: var(--batch-gradient-primary);
+	box-shadow: var(--batch-shadow-md);
+}
+
+.button-submit:hover:not(:disabled) {
+	background-color: var(--vscode-button-hoverBackground);
+}
+
+.button-send {
+	background-color: var(--vscode-button-secondaryBackground);
+	color: var(--vscode-button-secondaryForeground);
+	background: var(--batch-gradient-secondary);
+	box-shadow: var(--batch-shadow-sm);
+}
+
+.button-send:hover:not(:disabled) {
+	background-color: var(--vscode-button-secondaryHoverBackground);
+}
+
+.button-submit:disabled,
+.button-send:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+/* +2 All and Combo buttons */
+.button-plus2,
+.button-combo {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	padding: 8px 16px;
+	border: none;
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 13px;
+	font-weight: 500;
+}
+
+.button-plus2 {
+	background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+	color: white;
+	padding: 8px 16px;
+	border-radius: 6px;
+	font-weight: 500;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	transition: all 0.2s ease;
+	box-shadow: 0 2px 4px rgba(34, 197, 94, 0.3);
+}
+
+.button-plus2:hover:not(:disabled) {
+	background-color: #45a049;
+	transform: translateY(-1px);
+	box-shadow: 0 4px 8px rgba(34, 197, 94, 0.4);
+}
+
+.button-combo {
+	background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+	color: white;
+	padding: 8px 16px;
+	border-radius: 6px;
+	font-weight: 500;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	transition: all 0.2s ease;
+	box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
+.button-combo:hover:not(:disabled) {
+	background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+	transform: translateY(-1px);
+	box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
+}
+
+.button-plus2:disabled,
+.button-combo:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+/* Status badges for +2 and submittable */
+.status-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 18px;
+	height: 18px;
+	border-radius: 50%;
+	font-size: 10px;
+	margin-left: 4px;
+}
+
+.status-badge.plus2 {
+	background-color: #4caf50;
+	color: #fff;
+}
+
+.status-badge.submittable {
+	background-color: #2196f3;
+	color: #fff;
+}
+
+/* Score picker buttons */
+.score-button {
+	min-width: 32px;
+	padding: 4px 8px;
+	background-color: var(--vscode-button-secondaryBackground);
+	color: var(--vscode-button-secondaryForeground);
+	border: none;
+	border-radius: 12px;
+	cursor: pointer;
+	font-size: 12px;
+	font-weight: 500;
+	border-radius: 16px;
+	padding: 6px 10px;
+	font-weight: 600;
+	box-shadow: var(--batch-shadow-sm);
+	transition: all var(--batch-transition-fast);
+}
+
+.score-button:hover:not(:disabled) {
+	opacity: 0.9;
+	transform: translateY(-1px);
+	box-shadow: var(--batch-shadow-md);
+}
+
+.score-button.score-approved {
+	background-color: #7fb66b;
+	color: #fff;
+	background: linear-gradient(135deg, #7fb66b 0%, #5a9a4a 100%);
+}
+
+.score-button.score-recommended {
+	background-color: #3f6732;
+	color: #fff;
+	background: linear-gradient(135deg, #3f6732 0%, #2d4b24 100%);
+}
+
+.score-button.score-neutral {
+	background-color: #597280;
+	color: #fff;
+}
+
+.score-button.score-disliked {
+	background-color: #bf6874;
+	color: #fff;
+}
+
+.score-button.score-rejected {
+	background-color: #ac2d3e;
+	color: #fff;
+	background: linear-gradient(135deg, #ac2d3e 0%, #8a2330 100%);
+}

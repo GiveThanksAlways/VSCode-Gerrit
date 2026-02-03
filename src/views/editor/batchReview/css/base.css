@@ -1,16 +1,5 @@
 /* ============================================
-   Batch Review UI - Base Styles
-   Global defaults and CSS variables.
-   
-   This file is automatically loaded first via the HTML file.
-   Other modules loaded in order:
-   - layout.css: Container and layout
-   - components.css: UI elements
-   - changes.css: Change list
-   - files.css: File tree
-   - review.css: Review panel
-   - chain.css: Drag & drop
-   - safety.css: Popups and modals
+   Base Styles - Global defaults and reset
    ============================================ */
 
 :root {

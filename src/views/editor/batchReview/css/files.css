@@ -1,0 +1,178 @@
+/* ============================================
+   Files & Expandable Sections
+   ============================================ */
+
+.expand-button {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	margin: 10px 0 10px 8px;
+	padding: 0;
+	background: transparent;
+	border: none;
+	cursor: pointer;
+	border-radius: 3px;
+	flex-shrink: 0;
+	border-radius: 6px;
+	transition: all var(--batch-transition-fast);
+}
+
+.expand-button:hover {
+	background-color: var(--vscode-toolbar-hoverBackground);
+	transform: scale(1.1);
+}
+
+.expand-button .codicon {
+	font-size: 14px;
+	color: var(--vscode-foreground);
+	transition: transform var(--batch-transition-fast);
+}
+
+/* Files container */
+.files-container {
+	margin-left: 40px;
+	padding: 8px 16px 12px;
+	border-top: 1px solid var(--vscode-panel-border);
+	background-color: var(--vscode-editor-background);
+	animation: slideDown 200ms ease-out;
+}
+
+@keyframes slideDown {
+	from {
+		opacity: 0;
+		transform: translateY(-8px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.files-loading,
+.files-empty {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px;
+	color: var(--vscode-descriptionForeground);
+	font-size: 12px;
+	font-style: italic;
+}
+
+.file-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 4px 8px;
+	cursor: pointer;
+	border-radius: 3px;
+	font-size: 13px;
+	border-radius: 6px;
+	transition: all var(--batch-transition-fast);
+}
+
+.file-item:hover {
+	background-color: var(--vscode-list-hoverBackground);
+	background: linear-gradient(
+		90deg,
+		var(--vscode-list-hoverBackground) 0%,
+		transparent 100%
+	);
+	transform: translateX(2px);
+}
+
+.file-item .codicon {
+	flex-shrink: 0;
+	color: var(--vscode-symbolIcon-fileForeground, var(--vscode-foreground));
+}
+
+.file-path {
+	flex: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.file-status {
+	font-size: 11px;
+	font-weight: 600;
+	padding: 1px 4px;
+	border-radius: 3px;
+	flex-shrink: 0;
+	box-shadow: var(--batch-shadow-sm);
+}
+
+.file-status-added {
+	background-color: rgba(35, 134, 54, 0.3);
+	color: #3fb950;
+}
+
+.file-status-deleted {
+	background-color: rgba(248, 81, 73, 0.3);
+	color: #f85149;
+}
+
+.file-status-modified {
+	background-color: rgba(187, 128, 9, 0.3);
+	color: #d29922;
+}
+
+.file-status-renamed {
+	background-color: rgba(139, 148, 158, 0.3);
+	color: #8b949e;
+}
+
+.file-stats {
+	display: flex;
+	gap: 6px;
+	font-size: 12px;
+	flex-shrink: 0;
+}
+
+.file-additions {
+	color: #3fb950;
+}
+
+.file-deletions {
+	color: #f85149;
+}
+
+/* File Tree View */
+.tree-folder {
+	display: flex;
+	flex-direction: column;
+}
+
+.tree-folder-header {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding: 4px 8px;
+	cursor: pointer;
+	font-size: 13px;
+	border-radius: 6px;
+	transition: background-color var(--batch-transition-fast);
+}
+
+.tree-folder-header:hover {
+	background-color: var(--vscode-list-hoverBackground);
+}
+
+.tree-folder-header .codicon {
+	font-size: 14px;
+}
+
+.folder-name {
+	color: var(--vscode-foreground);
+}
+
+.tree-folder-children {
+	display: flex;
+	flex-direction: column;
+}
+
+.tree-file-item {
+	padding-left: 16px;
+}

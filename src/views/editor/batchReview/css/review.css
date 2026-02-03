@@ -1,0 +1,304 @@
+/* ============================================
+   Review Panel & Voting Styles
+   ============================================ */
+
+.vote-section {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding: 15px;
+	background-color: var(--vscode-sideBar-background);
+	border: 1px solid var(--vscode-panel-border);
+	border-radius: 4px;
+	background: var(--batch-glass-bg);
+	border-radius: 10px;
+	padding: 20px;
+	box-shadow: var(--batch-shadow-md);
+	backdrop-filter: blur(10px);
+}
+
+.vote-message {
+	width: 100%;
+	padding: 8px;
+	background-color: var(--vscode-input-background);
+	color: var(--vscode-input-foreground);
+	border: 1px solid var(--vscode-input-border);
+	border-radius: 2px;
+	font-family: var(--vscode-font-family);
+	font-size: 13px;
+	resize: vertical;
+}
+
+.vote-message:focus {
+	outline: 1px solid var(--vscode-focusBorder);
+}
+
+.vote-buttons {
+	display: flex;
+	gap: 10px;
+}
+
+.batch-actions {
+	display: flex;
+	flex-direction: column;
+	gap: 15px;
+}
+
+.review-panel {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding: 16px;
+	background-color: var(--vscode-editor-background);
+	border-top: 1px solid var(--vscode-panel-border);
+	background: linear-gradient(
+		180deg,
+		var(--vscode-editor-background) 0%,
+		color-mix(in srgb, var(--vscode-editor-background) 95%, transparent)
+			100%
+	);
+	border-radius: 8px;
+	margin-top: 12px;
+	padding: 0;
+	box-shadow: var(--batch-shadow-sm);
+	overflow: hidden;
+}
+
+/* Section Headers */
+.section-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--vscode-foreground);
+	margin-bottom: 0;
+	padding: 10px;
+}
+
+.section-header.clickable {
+	cursor: pointer;
+	border-radius: 6px;
+	user-select: none;
+}
+
+.section-header.clickable:hover {
+	background: rgba(255, 255, 255, 0.05);
+}
+
+.section-header .codicon {
+	font-size: 14px;
+}
+
+.section-content {
+	padding: 0 10px 10px 10px;
+	overflow: visible;
+}
+
+/* Collapsed section styling */
+.review-panel.collapsed {
+	border-style: dashed;
+	opacity: 0.8;
+}
+
+.review-panel.expanded {
+	border-style: solid;
+}
+
+/* Batch Operations Section */
+.review-panel.batch-operations {
+	background: linear-gradient(
+		135deg,
+		rgba(33, 150, 83, 0.1) 0%,
+		rgba(39, 174, 96, 0.05) 100%
+	);
+	border: 1px solid rgba(39, 174, 96, 0.3);
+	border-radius: 8px;
+	margin-bottom: 16px;
+}
+
+.review-panel.batch-operations .section-header {
+	color: var(--batch-success);
+}
+
+.review-panel.batch-operations .section-header .codicon {
+	color: var(--batch-success);
+}
+
+/* Individual Review Section */
+.review-panel.individual-review {
+	background: linear-gradient(
+		135deg,
+		rgba(96, 165, 250, 0.08) 0%,
+		rgba(59, 130, 246, 0.04) 100%
+	);
+	border: 1px solid rgba(96, 165, 250, 0.2);
+	border-radius: 8px;
+}
+
+.review-panel.individual-review .section-header {
+	color: var(--vscode-textLink-foreground);
+}
+
+.review-panel.individual-review .section-header .codicon {
+	color: var(--vscode-textLink-foreground);
+}
+
+/* Submit buttons */
+.submit-buttons {
+	display: flex;
+	gap: 10px;
+	margin-top: 8px;
+	gap: 12px;
+	margin-top: 16px;
+}
+
+.submit-buttons.compact {
+	display: flex;
+	gap: 8px;
+}
+
+/* People picker */
+.people-picker {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.picker-label {
+	font-size: 13px;
+	font-weight: 500;
+	color: var(--vscode-foreground);
+}
+
+.picker-input-container {
+	position: relative;
+}
+
+.selected-people {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	margin-bottom: 4px;
+}
+
+.person-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 2px 8px;
+	background-color: var(--vscode-badge-background);
+	color: var(--vscode-badge-foreground);
+	border-radius: 12px;
+	font-size: 12px;
+	background: linear-gradient(
+		135deg,
+		var(--vscode-badge-background) 0%,
+		color-mix(in srgb, var(--vscode-badge-background) 85%, #000) 100%
+	);
+	padding: 4px 10px;
+	box-shadow: var(--batch-shadow-sm);
+	transition: transform var(--batch-transition-fast);
+}
+
+.person-chip:hover {
+	transform: scale(1.02);
+}
+
+.remove-person {
+	background: transparent;
+	border: none;
+	color: var(--vscode-badge-foreground);
+	cursor: pointer;
+	padding: 0 2px;
+	font-size: 14px;
+	line-height: 1;
+}
+
+.remove-person:hover {
+	opacity: 0.7;
+}
+
+.people-input {
+	width: 100%;
+	padding: 6px 8px;
+	background-color: var(--vscode-input-background);
+	color: var(--vscode-input-foreground);
+	border: 1px solid var(--vscode-input-border, transparent);
+	border-radius: 3px;
+	font-size: 13px;
+}
+
+.people-input:focus {
+	outline: none;
+	border-color: var(--vscode-focusBorder);
+}
+
+.suggestions-dropdown {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	right: 0;
+	background-color: var(--vscode-dropdown-background);
+	border: 1px solid var(--vscode-dropdown-border);
+	border-radius: 3px;
+	max-height: 200px;
+	overflow-y: auto;
+	z-index: 100;
+	border-radius: 8px;
+	box-shadow: var(--batch-shadow-lg);
+	margin-top: 4px;
+	backdrop-filter: blur(10px);
+}
+
+.suggestion-item {
+	padding: 8px 12px;
+	cursor: pointer;
+	font-size: 13px;
+	padding: 10px 14px;
+	border-bottom: 1px solid
+		color-mix(in srgb, var(--vscode-panel-border) 30%, transparent);
+	transition: background-color var(--batch-transition-fast);
+}
+
+.suggestion-item:last-child {
+	border-bottom: none;
+}
+
+.suggestion-item:hover {
+	background-color: var(--vscode-list-hoverBackground);
+}
+
+/* Score picker */
+.score-pickers {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.score-picker {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.score-label {
+	min-width: 100px;
+	font-size: 13px;
+	color: var(--vscode-foreground);
+}
+
+.score-buttons {
+	display: flex;
+	gap: 4px;
+}
+
+/* Comment section */
+.comment-section {
+	margin-top: 4px;
+}
+
+.resolved-section {
+	display: flex;
+	align-items: center;
+}

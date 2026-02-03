@@ -159,10 +159,7 @@ export async function isChangeChained(
 				path: `changes/${entry.change_id}/detail/`,
 				method: 'GET',
 			});
-			if (
-				detailResp &&
-				api['_assertRequestSucceeded'](detailResp)
-			) {
+			if (detailResp && api['_assertRequestSucceeded'](detailResp)) {
 				const detailJson = api['_tryParseJSON']<{ status: string }>(
 					detailResp.strippedBody
 				);

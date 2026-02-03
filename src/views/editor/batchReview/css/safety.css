@@ -1,0 +1,217 @@
+/* ============================================
+   Safety Armed Button & UI Enhancements
+   ============================================ */
+
+/* Safety Armed Button Styles */
+.safety-button-wrapper {
+	position: relative;
+	display: flex;
+	flex: 1;
+	overflow: visible;
+}
+
+.safety-button-wrapper > button {
+	flex: 1;
+	width: 100%;
+}
+
+.safety-button-wrapper button.safety-active {
+	border-color: rgba(255, 193, 7, 0.6);
+	box-shadow: 0 0 8px rgba(255, 193, 7, 0.3);
+}
+
+/* Popup that appears below the button */
+.safety-popup {
+	position: absolute;
+	top: calc(100% + 8px);
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 9999 !important;
+
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 12px;
+	min-width: 200px;
+
+	background: var(--vscode-editorWidget-background, #252526);
+	border: 1px solid rgba(255, 193, 7, 0.5);
+	border-radius: 8px;
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+
+	animation: popupFadeIn 0.15s ease-out;
+}
+
+@keyframes popupFadeIn {
+	from {
+		opacity: 0;
+		transform: translateX(-50%) translateY(-4px);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(-50%) translateY(0);
+	}
+}
+
+/* Arrow pointing up to the button */
+.safety-popup::after {
+	content: '';
+	position: absolute;
+	bottom: 100%;
+	left: 50%;
+	transform: translateX(-50%);
+	border: 8px solid transparent;
+	border-bottom-color: rgba(255, 193, 7, 0.5);
+}
+
+.safety-popup-header {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	font-size: 13px;
+	font-weight: 600;
+	color: #ffc107;
+}
+
+.safety-popup-header .codicon {
+	font-size: 16px;
+}
+
+.safety-popup-actions {
+	display: flex;
+	gap: 8px;
+}
+
+.safety-popup-confirm {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	padding: 6px 12px;
+	font-size: 12px;
+	font-weight: 500;
+	background: linear-gradient(
+		135deg,
+		rgba(255, 193, 7, 0.25),
+		rgba(255, 152, 0, 0.2)
+	);
+	border: 1px solid rgba(255, 193, 7, 0.5);
+	border-radius: 4px;
+	color: var(--vscode-foreground);
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+
+.safety-popup-confirm:hover:not(:disabled) {
+	background: linear-gradient(
+		135deg,
+		rgba(255, 193, 7, 0.4),
+		rgba(255, 152, 0, 0.3)
+	);
+}
+
+.safety-popup-confirm:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.safety-popup-cancel {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	background: rgba(255, 255, 255, 0.08);
+	border: 1px solid rgba(255, 255, 255, 0.15);
+	border-radius: 4px;
+	color: var(--vscode-foreground);
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+
+.safety-popup-cancel:hover {
+	background: rgba(255, 255, 255, 0.15);
+}
+
+/* View Mode Toggle */
+.view-mode-toggle {
+	display: flex;
+	gap: 2px;
+	background-color: var(--vscode-input-background);
+	border-radius: 4px;
+	padding: 2px;
+	border-radius: 8px;
+	padding: 3px;
+	box-shadow: inset var(--batch-shadow-sm);
+}
+
+.view-mode-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 4px 6px;
+	border: none;
+	background: transparent;
+	color: var(--vscode-descriptionForeground);
+	cursor: pointer;
+	border-radius: 3px;
+	padding: 6px 8px;
+	border-radius: 6px;
+	transition: all var(--batch-transition-fast);
+}
+
+.view-mode-btn:hover {
+	background-color: var(--vscode-list-hoverBackground);
+	color: var(--vscode-foreground);
+}
+
+.view-mode-btn.active {
+	background-color: var(--vscode-button-background);
+	color: var(--vscode-button-foreground);
+	background: var(--batch-gradient-primary);
+	box-shadow: var(--batch-shadow-sm);
+}
+
+/* Loading states and animations */
+.loading-container {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 15px;
+	padding: 60px 20px;
+	color: var(--vscode-descriptionForeground);
+	padding: 80px 40px;
+}
+
+.loading-container .codicon {
+	font-size: 32px;
+	font-size: 40px;
+	animation: loadingPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes loadingPulse {
+	0%,
+	100% {
+		opacity: 1;
+		transform: scale(1);
+	}
+	50% {
+		opacity: 0.5;
+		transform: scale(0.95);
+	}
+}
+
+/* Ensure parent containers do not clip the popup */
+.batch-review-container,
+.review-panel.batch-operations,
+.section-content {
+	overflow: visible !important;
+}
+
+.codicon {
+	font-size: 16px;
+}

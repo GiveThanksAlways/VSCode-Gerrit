@@ -1,0 +1,311 @@
+/* ============================================
+   Changes List Styles
+   ============================================ */
+
+.change-list {
+	background-color: var(--vscode-sideBar-background);
+	border: 1px solid var(--vscode-panel-border);
+	border-radius: 4px;
+	overflow: hidden;
+	flex: 1 1 0;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	background: var(--batch-glass-bg);
+	border-radius: 10px;
+	box-shadow: var(--batch-shadow-md);
+	backdrop-filter: blur(10px);
+}
+
+.list-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 12px 16px;
+	background-color: var(--vscode-sideBarSectionHeader-background);
+	border-bottom: 1px solid var(--vscode-panel-border);
+	padding: 14px 18px;
+	background: linear-gradient(
+		180deg,
+		color-mix(
+				in srgb,
+				var(--vscode-sideBarSectionHeader-background) 100%,
+				transparent
+			)
+			0%,
+		color-mix(
+				in srgb,
+				var(--vscode-sideBarSectionHeader-background) 90%,
+				transparent
+			)
+			100%
+	);
+}
+
+.list-header h2 {
+	font-size: 1.2em;
+	font-weight: 700;
+	border-bottom: 1.5px solid var(--vscode-panel-border);
+	padding-bottom: 2px;
+	margin-bottom: 0;
+	margin: 0;
+	font-size: 16px;
+	font-weight: 600;
+	font-size: 15px;
+	font-weight: 600;
+	letter-spacing: 0.3px;
+}
+
+.list-header-actions {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.checkbox-label {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	cursor: pointer;
+	font-size: 13px;
+	user-select: none;
+}
+
+.checkbox-label input[type='checkbox'] {
+	width: 16px;
+	height: 16px;
+	cursor: pointer;
+}
+
+.changes-container {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow-y: auto;
+}
+
+.empty-message {
+	padding: 40px 20px;
+	text-align: center;
+	color: var(--vscode-descriptionForeground);
+	font-style: italic;
+	padding: 50px 30px;
+	font-size: 14px;
+}
+
+.change-item {
+	border-bottom: 1px solid var(--vscode-panel-border);
+	transition: background-color 0.15s;
+	cursor: pointer;
+	user-select: none;
+	border-bottom: 1px solid
+		color-mix(in srgb, var(--vscode-panel-border) 50%, transparent);
+}
+
+.change-item:last-child {
+	border-bottom: none;
+}
+
+.change-item:hover {
+	background-color: var(--vscode-list-hoverBackground);
+}
+
+.change-item.selected {
+	background-color: var(--vscode-list-activeSelectionBackground);
+	border-left: 3px solid var(--vscode-focusBorder);
+}
+
+.change-item:nth-child(even) {
+	background: rgba(255, 255, 255, 0.01);
+}
+
+.change-item:nth-child(odd) {
+	background: rgba(0, 0, 0, 0.04);
+}
+
+.change-row {
+	display: flex;
+	align-items: flex-start;
+}
+
+.change-row,
+.change-info {
+	max-width: 100%;
+	min-width: 0;
+}
+
+/* Open in Gerrit button - show on hover and focus-within */
+/* Uses visibility instead of display to prevent layout shift */
+.open-online-button {
+	display: flex;
+	visibility: hidden;
+	opacity: 0;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	background: transparent;
+	border: none;
+	cursor: pointer;
+	border-radius: 3px;
+	flex-shrink: 0;
+	margin-right: 8px;
+}
+
+.open-online-button:hover {
+	background-color: var(--vscode-toolbar-hoverBackground);
+}
+
+.open-online-button .codicon {
+	font-size: 14px;
+	color: var(--vscode-foreground);
+}
+
+.change-item:hover .open-online-button,
+.change-item:focus-within .open-online-button {
+	visibility: visible;
+	opacity: 1;
+}
+
+.change-checkbox {
+	display: flex;
+	align-items: flex-start;
+	gap: 14px;
+	padding: 14px 16px;
+	cursor: pointer;
+	width: 100%;
+}
+
+.change-checkbox-wrapper {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-right: 8px;
+	padding: 4px;
+	cursor: pointer;
+	border-radius: 4px;
+	transition: background-color 0.1s ease;
+}
+
+.change-checkbox-wrapper:hover {
+	background-color: rgba(255, 255, 255, 0.05);
+}
+
+.change-checkbox-wrapper:focus {
+	outline: 1px solid var(--vscode-focusBorder);
+	outline-offset: -1px;
+}
+
+.change-checkbox-wrapper .change-checkbox {
+	width: 16px;
+	height: 16px;
+	cursor: pointer;
+	accent-color: var(--vscode-checkbox-background);
+	pointer-events: none;
+}
+
+.change-checkbox input[type='checkbox'] {
+	margin-top: 2px;
+	flex-shrink: 0;
+	width: 18px;
+	height: 18px;
+	accent-color: var(--vscode-checkbox-background);
+	cursor: pointer;
+}
+
+.change-info {
+	flex: 1;
+	min-width: 0;
+}
+
+.change-header {
+	display: flex;
+	gap: 10px;
+	margin-bottom: 6px;
+	align-items: baseline;
+}
+
+.change-number {
+	color: var(--vscode-descriptionForeground);
+	font-weight: 600;
+	flex-shrink: 0;
+}
+
+.change-title,
+.change-subject,
+.change-meta {
+	max-width: 420px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.change-subject {
+	font-weight: 500;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.change-details {
+	display: flex;
+	gap: 15px;
+	font-size: 12px;
+	color: var(--vscode-descriptionForeground);
+}
+
+.change-details > span {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.change-project {
+	font-weight: 500;
+}
+
+/* Score badge styles */
+.change-score {
+	font-size: 11px;
+	font-weight: 700;
+	padding: 2px 6px;
+	border-radius: 10px;
+	margin-left: auto;
+	flex-shrink: 0;
+	box-shadow: var(--batch-shadow-sm);
+	transition:
+		transform var(--batch-transition-fast),
+		box-shadow var(--batch-transition-fast);
+	padding: 3px 8px;
+	border-radius: 12px;
+}
+
+.change-item:hover .change-score {
+	transform: scale(1.05);
+}
+
+/* Scrollbar styling */
+.changes-container::-webkit-scrollbar {
+	width: 10px;
+	width: 8px;
+}
+
+.changes-container::-webkit-scrollbar-track {
+	background: var(--vscode-scrollbarSlider-background);
+	background: transparent;
+	border-radius: 4px;
+}
+
+.changes-container::-webkit-scrollbar-thumb {
+	background: var(--vscode-scrollbarSlider-activeBackground);
+	background: color-mix(
+		in srgb,
+		var(--vscode-scrollbarSlider-background) 80%,
+		transparent
+	);
+	border-radius: 4px;
+}
+
+.changes-container::-webkit-scrollbar-thumb:hover {
+	background: var(--vscode-scrollbarSlider-hoverBackground);
+}

@@ -9,9 +9,26 @@ export function getHTML(extensionURI: Uri, webview: Webview): string {
 		Uri.joinPath(extensionURI, 'out/batchReview/codicon.css')
 	);
 
-	const cssURI = webview.asWebviewUri(
-		Uri.joinPath(extensionURI, 'out/batchReview/index.css')
-	);
+	// Modular CSS files
+	const cssFiles = [
+		'base.css',
+		'layout.css',
+		'components.css',
+		'changes.css',
+		'files.css',
+		'review.css',
+		'chain.css',
+		'safety.css',
+	];
+
+	const cssLinks = cssFiles
+		.map((file) => {
+			const uri = webview.asWebviewUri(
+				Uri.joinPath(extensionURI, `out/batchReview/css/${file}`)
+			);
+			return `\t\t<link href="${uri.toString()}" rel="stylesheet" />`;
+		})
+		.join('\n');
 
 	return `<!DOCTYPE HTML>
 <html>
@@ -20,7 +37,7 @@ export function getHTML(extensionURI: Uri, webview: Webview): string {
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 		<title>Batch Review</title>
 		<link href="${codiconsURI.toString()}" rel="stylesheet" />
-		<link href="${cssURI.toString()}" rel="stylesheet" />
+		${cssLinks}
 	</head>
 	<body>
 		<div id="app"></div>
