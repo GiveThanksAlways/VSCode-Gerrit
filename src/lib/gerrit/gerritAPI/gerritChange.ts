@@ -43,6 +43,8 @@ export class GerritChange extends DynamicallyFetchable {
 	public workInProgress?: boolean;
 	public owner: GerritUserResponse;
 	public moreChanges: boolean;
+	public submittable: boolean = false;
+	public requirements: Array<{ status: string; fallback_text: string }> = [];
 
 	public fetchedAt = new DateTime(new Date());
 
@@ -76,6 +78,8 @@ export class GerritChange extends DynamicallyFetchable {
 		this.workInProgress = response.work_in_progress;
 		this.owner = response.owner;
 		this.moreChanges = response._more_changes ?? false;
+		this.submittable = response.submittable ?? false;
+		this.requirements = response.requirements ?? [];
 		this._currentRevision = response.current_revision
 			? {
 					id: response.current_revision,

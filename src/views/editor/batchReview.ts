@@ -850,15 +850,20 @@ class BatchReviewProvider implements Disposable {
 		);
 		for (const change of orderedChanges) {
 			try {
-				// Optionally, re-fetch to ensure submittable
+				// Re-fetch with SUBMITTABLE option to get current submittable status
 				const changeObj = await GerritChange.getChangeOnce(
-					change!.changeID
+					change!.changeID,
+					[GerritAPIWith.SUBMITTABLE, GerritAPIWith.DETAILED_LABELS]
 				);
 				if (!changeObj) {
 					submitFail++;
 					submitErrors.push(`Change not found: ${change!.changeID}`);
 					continue;
 				}
+				console.log(
+					`[BatchReview] Change ${change!.changeID} submittable:`,
+					(changeObj as any).submittable
+				);
 				if (!(changeObj as any).submittable) {
 					submitFail++;
 					// Log requirements and label status for debugging

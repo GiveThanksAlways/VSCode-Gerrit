@@ -334,21 +334,13 @@ export const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 								{change.severity}
 							</span>
 						)}
-						{/* Always show +2 checkmark if present */}
-						{change.hasCodeReviewPlus2 && (
-							<span
-								className="status-badge plus2"
-								title="Has Code-Review +2"
-							>
-								<span className="codicon codicon-check"></span>
-							</span>
-						)}
+						{/* Show green checkmark if submittable (ready to submit) */}
 						{change.submittable && (
 							<span
 								className="status-badge submittable"
 								title="Ready to submit"
 							>
-								<span className="codicon codicon-git-merge"></span>
+								<span className="codicon codicon-check"></span>
 							</span>
 						)}
 						{chainInfo.inChain && (
