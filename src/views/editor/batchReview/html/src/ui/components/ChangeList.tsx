@@ -7,9 +7,12 @@ interface ChangeListProps {
 	selectedChanges: Set<string>;
 	onSelectionChange: (changeID: string, selected: boolean) => void;
 	onSelectAll: (selected: boolean) => void;
-	onMultiSelect: (changeIDs: string[], mode: 'add' | 'replace') => void;
+	onMultiSelect: (
+		changeIDs: string[],
+		mode: 'add' | 'replace' | 'remove'
+	) => void;
 	title: string;
-	showScores?: boolean;
+	showSeverity?: boolean;
 	listType: 'yourTurn' | 'batch';
 	onDragStart: (
 		e: React.DragEvent,
@@ -34,7 +37,7 @@ export const ChangeList: VFC<ChangeListProps> = ({
 	onSelectAll,
 	onMultiSelect,
 	title,
-	showScores = false,
+	showSeverity = false,
 	listType,
 	onDragStart,
 	onDrop,
@@ -173,10 +176,8 @@ export const ChangeList: VFC<ChangeListProps> = ({
 								selectedChanges.has(id)
 							);
 							if (allSelected) {
-								// Deselect all chain items
-								for (const id of chainChangeIDs) {
-									onSelectionChange(id, false);
-								}
+								// Deselect all chain items using bulk remove
+								onMultiSelect(chainChangeIDs, 'remove');
 							} else {
 								// Select all chain items
 								onMultiSelect(chainChangeIDs, 'add');
@@ -261,7 +262,7 @@ export const ChangeList: VFC<ChangeListProps> = ({
 								change={change}
 								selected={selectedChanges.has(change.changeID)}
 								onSelectionEvent={handleSelectionEvent}
-								showScore={showScores}
+								showSeverity={showSeverity}
 								draggable={true}
 								onDragStart={handleItemDragStart}
 								onDragOver={handleItemDragOver}
@@ -269,6 +270,7 @@ export const ChangeList: VFC<ChangeListProps> = ({
 								index={index}
 								showDropIndicator={indicator}
 								chainInfo={chainInfoMap?.get(change.changeId)}
+								listType={listType}
 							/>
 						);
 					})

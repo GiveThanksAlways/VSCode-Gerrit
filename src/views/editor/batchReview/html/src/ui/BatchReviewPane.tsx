@@ -105,7 +105,10 @@ export const BatchReviewPane: VFC = () => {
 		const updatedChainInfo = new Map<string, ChainInfo>();
 
 		// Group changes by chain using chainNumber (the base change number)
-		const chainGroups = new Map<number, { change: BatchReviewChange; position: number }[]>();
+		const chainGroups = new Map<
+			number,
+			{ change: BatchReviewChange; position: number }[]
+		>();
 
 		for (const change of state.batchChanges) {
 			const info = chainInfoMap.get(change.changeId);
@@ -144,7 +147,9 @@ export const BatchReviewPane: VFC = () => {
 
 			// If we have broken positions, add a warning
 			if (brokenPositions.size > 0) {
-				const brokenList = Array.from(brokenPositions).sort((a, b) => a - b);
+				const brokenList = Array.from(brokenPositions).sort(
+					(a, b) => a - b
+				);
 				if (validPositions.size === 0) {
 					warnings.push(
 						`Chain #${chainNumber} is missing the base (position 1). Add changes 1-${brokenList[0] - 1} to submit.`
@@ -167,7 +172,9 @@ export const BatchReviewPane: VFC = () => {
 					...existing,
 					inChain: true,
 					hasUnsubmittedDependencies: isBroken,
-					chainColorClass: isBroken ? 'chain-warning-glow' : colorClass,
+					chainColorClass: isBroken
+						? 'chain-warning-glow'
+						: colorClass,
 				});
 			}
 		});
@@ -182,7 +189,8 @@ export const BatchReviewPane: VFC = () => {
 					// Only update if values actually changed
 					if (
 						!existing ||
-						existing.hasUnsubmittedDependencies !== value.hasUnsubmittedDependencies ||
+						existing.hasUnsubmittedDependencies !==
+							value.hasUnsubmittedDependencies ||
 						existing.chainColorClass !== value.chainColorClass
 					) {
 						newMap.set(key, value);
@@ -196,18 +204,25 @@ export const BatchReviewPane: VFC = () => {
 		setChainWarnings(warnings);
 		// Only depend on batchChanges - chainInfoMap updates are handled internally
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [state.batchChanges.length, state.batchChanges.map(c => c.changeId).join(',')]);
+	}, [
+		state.batchChanges.length,
+		state.batchChanges.map((c) => c.changeId).join(','),
+	]);
 
 	/**
 	 * When items are removed from the batch (via drag-drop or remove button),
 	 * clear their chain warning state. Chain warnings should only appear in batch view.
 	 */
 	useEffect(() => {
-		const batchChangeIds = new Set(state.batchChanges.map(c => c.changeId));
-		const changedIds = Array.from(chainInfoMap.keys()).filter(
-			id => !batchChangeIds.has(id) && chainInfoMap.get(id)?.hasUnsubmittedDependencies
+		const batchChangeIds = new Set(
+			state.batchChanges.map((c) => c.changeId)
 		);
-		
+		const changedIds = Array.from(chainInfoMap.keys()).filter(
+			(id) =>
+				!batchChangeIds.has(id) &&
+				chainInfoMap.get(id)?.hasUnsubmittedDependencies
+		);
+
 		if (changedIds.length > 0) {
 			setChainInfoMap((prev) => {
 				const newMap = new Map(prev);
@@ -225,7 +240,10 @@ export const BatchReviewPane: VFC = () => {
 			});
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [state.batchChanges.length, state.batchChanges.map(c => c.changeId).join(',')]);
+	}, [
+		state.batchChanges.length,
+		state.batchChanges.map((c) => c.changeId).join(','),
+	]);
 
 	const handleYourTurnSelection = (changeID: string, selected: boolean) => {
 		const newSet = new Set(selectedYourTurn);
@@ -278,7 +296,7 @@ export const BatchReviewPane: VFC = () => {
 
 	const handleRemoveFromBatch = () => {
 		if (selectedBatch.size === 0) return;
-		
+
 		// Clear chain warning state for removed items
 		setChainInfoMap((prev) => {
 			const newMap = new Map(prev);
@@ -295,7 +313,7 @@ export const BatchReviewPane: VFC = () => {
 			});
 			return newMap;
 		});
-		
+
 		vscode.postMessage({
 			type: 'removeFromBatch',
 			body: { changeIDs: Array.from(selectedBatch) },
@@ -305,7 +323,7 @@ export const BatchReviewPane: VFC = () => {
 
 	const handleClearBatch = () => {
 		if (state.batchChanges.length === 0) return;
-		
+
 		// Clear chain warning state for all batch items
 		setChainInfoMap((prev) => {
 			const newMap = new Map(prev);
@@ -321,7 +339,7 @@ export const BatchReviewPane: VFC = () => {
 			}
 			return newMap;
 		});
-		
+
 		vscode.postMessage({ type: 'clearBatch' });
 		setSelectedBatch(new Set());
 	};
@@ -332,10 +350,15 @@ export const BatchReviewPane: VFC = () => {
 	const applyMultiSelect = (
 		prev: Set<string>,
 		changeIDs: string[],
-		mode: 'add' | 'replace'
+		mode: 'add' | 'replace' | 'remove'
 	): Set<string> => {
 		if (mode === 'replace') {
 			return new Set(changeIDs);
+		}
+		if (mode === 'remove') {
+			const newSet = new Set(prev);
+			changeIDs.forEach((id) => newSet.delete(id));
+			return newSet;
 		}
 		// mode === 'add'
 		const newSet = new Set(prev);
@@ -345,14 +368,14 @@ export const BatchReviewPane: VFC = () => {
 
 	const handleYourTurnMultiSelect = (
 		changeIDs: string[],
-		mode: 'add' | 'replace'
+		mode: 'add' | 'replace' | 'remove'
 	) => {
 		setSelectedYourTurn((prev) => applyMultiSelect(prev, changeIDs, mode));
 	};
 
 	const handleBatchMultiSelect = (
 		changeIDs: string[],
-		mode: 'add' | 'replace'
+		mode: 'add' | 'replace' | 'remove'
 	) => {
 		setSelectedBatch((prev) => applyMultiSelect(prev, changeIDs, mode));
 	};
@@ -556,6 +579,7 @@ export const BatchReviewPane: VFC = () => {
 						onDrop={handleDrop}
 						fileViewMode={state.fileViewMode ?? 'tree'}
 						onFileViewModeChange={handleFileViewModeChange}
+						chainInfoMap={chainInfoMap}
 					/>
 					<div className="action-buttons">
 						<button
@@ -577,7 +601,7 @@ export const BatchReviewPane: VFC = () => {
 						onSelectAll={handleBatchSelectAll}
 						onMultiSelect={handleBatchMultiSelect}
 						title="Batch"
-						showScores={true}
+						showSeverity={true}
 						listType="batch"
 						onDragStart={handleDragStart}
 						onDrop={handleDrop}

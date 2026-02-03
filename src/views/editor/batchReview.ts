@@ -20,24 +20,25 @@ import {
 	window,
 } from 'vscode';
 import {
+	BatchReviewChange,
+	BatchReviewFileInfo,
+	TypedWebviewPanel,
+	SeverityLevel,
+} from './batchReview/types';
+import {
 	createBatchReviewApiServer,
 	BatchReviewApiServer,
 	ScoreMap,
 } from '../../lib/batchReviewApi/server';
 import {
-	BatchReviewChange,
-	BatchReviewFileInfo,
-	TypedWebviewPanel,
-} from './batchReview/types';
-import {
-	DefaultChangeFilter,
-	GerritChangeFilter,
-} from '../../lib/gerrit/gerritAPI/filters';
-import {
 	getOrderedBatch,
 	isChangeChained,
 	ChainInfoResult,
 } from './batchReview/chainUtils';
+import {
+	DefaultChangeFilter,
+	GerritChangeFilter,
+} from '../../lib/gerrit/gerritAPI/filters';
 import { FileTreeView } from '../activityBar/changes/changeTreeView/fileTreeView';
 import { GerritRevisionFileStatus } from '../../lib/gerrit/gerritAPI/types';
 import { BatchReviewState, BatchReviewPerson } from './batchReview/state';
@@ -310,7 +311,7 @@ class BatchReviewProvider implements Disposable {
 			'[BatchReview] Changes to add:',
 			changesToAdd.map((c) => ({
 				changeID: c.changeID,
-				score: c.score,
+				severity: c.severity,
 			}))
 		);
 
@@ -324,7 +325,7 @@ class BatchReviewProvider implements Disposable {
 			this._state.incomingChanges.map((c) => c.changeID)
 		);
 
-		// Prepare changes to insert (avoid duplicates, apply scores)
+		// Prepare changes to insert (avoid duplicates, apply severities)
 		const newChanges: BatchReviewChange[] = [];
 		for (const change of changesToAdd) {
 			if (
@@ -332,16 +333,16 @@ class BatchReviewProvider implements Disposable {
 					(c) => c.changeID === change.changeID
 				)
 			) {
-				// Always set score property, even if not present
+				// Apply severity if provided from API
 				if (scores && scores[change.changeID] !== undefined) {
 					console.log(
-						`[BatchReview] Setting score for ${change.changeID}:`,
+						`[BatchReview] Setting severity for ${change.changeID}:`,
 						scores[change.changeID]
 					);
-					change.score = Number(scores[change.changeID]);
+					change.severity = scores[change.changeID];
 				} else {
-					// If no score provided, ensure score is undefined or 0
-					change.score = change.score ?? undefined;
+					// If no severity provided, keep existing or leave undefined
+					change.severity = change.severity ?? undefined;
 				}
 				newChanges.push(change);
 			} else {
@@ -372,7 +373,7 @@ class BatchReviewProvider implements Disposable {
 			incoming: this._state.incomingChanges.map((c) => c.changeID),
 			batch: this._state.batchChanges.map((c) => ({
 				changeID: c.changeID,
-				score: c.score,
+				severity: c.severity,
 			})),
 		});
 
@@ -462,8 +463,31 @@ class BatchReviewProvider implements Disposable {
 			}
 		}
 
-		// Sort standalone by score (highest first)
-		standaloneChanges.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+		// Severity priority order: CRITICAL (highest) > HIGH > MEDIUM > LOW > APPROVED (lowest)
+		const severityPriority = (
+			severity: SeverityLevel | undefined
+		): number => {
+			switch (severity) {
+				case 'CRITICAL':
+					return 5;
+				case 'HIGH':
+					return 4;
+				case 'MEDIUM':
+					return 3;
+				case 'LOW':
+					return 2;
+				case 'APPROVED':
+					return 1;
+				default:
+					return 0; // No severity = lowest priority
+			}
+		};
+
+		// Sort standalone by severity (highest priority first)
+		standaloneChanges.sort(
+			(a, b) =>
+				severityPriority(b.severity) - severityPriority(a.severity)
+		);
 
 		// Sort each chain by position (base first = position 1)
 		const chainArrays: BatchReviewChange[][] = [];
@@ -472,11 +496,15 @@ class BatchReviewProvider implements Disposable {
 			chainArrays.push(group.map((g) => g.change));
 		}
 
-		// Sort chain groups by the highest score within each chain (to prioritize)
+		// Sort chain groups by the highest severity within each chain (to prioritize)
 		chainArrays.sort((a, b) => {
-			const maxScoreA = Math.max(...a.map((c) => c.score ?? 0));
-			const maxScoreB = Math.max(...b.map((c) => c.score ?? 0));
-			return maxScoreB - maxScoreA;
+			const maxPriorityA = Math.max(
+				...a.map((c) => severityPriority(c.severity))
+			);
+			const maxPriorityB = Math.max(
+				...b.map((c) => severityPriority(c.severity))
+			);
+			return maxPriorityB - maxPriorityA;
 		});
 
 		// Combine: standalone first, then chains in order

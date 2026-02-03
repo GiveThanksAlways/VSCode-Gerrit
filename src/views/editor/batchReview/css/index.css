@@ -675,6 +675,47 @@ button:disabled {
 	color: #3fb950;
 }
 
+/* Severity badges for AI code review */
+.change-severity {
+	font-size: 10px;
+	font-weight: 700;
+	padding: 2px 6px;
+	border-radius: 10px;
+	margin-left: auto;
+	flex-shrink: 0;
+	text-transform: uppercase;
+}
+
+/* CRITICAL - Red (highest severity) */
+.severity-critical {
+	background-color: rgba(248, 81, 73, 0.3);
+	color: #f85149;
+}
+
+/* HIGH - Orange */
+.severity-high {
+	background-color: rgba(255, 166, 87, 0.3);
+	color: #ffa657;
+}
+
+/* MEDIUM - Yellow */
+.severity-medium {
+	background-color: rgba(210, 153, 34, 0.3);
+	color: #d29922;
+}
+
+/* LOW - Light green */
+.severity-low {
+	background-color: rgba(130, 209, 101, 0.3);
+	color: #56d364;
+}
+
+/* APPROVED - Green (no issues) */
+.severity-approved {
+	background-color: rgba(35, 134, 54, 0.3);
+	color: #3fb950;
+}
+
 /* Drag and Drop styles */
 .change-item.draggable {
 	cursor: grab;
@@ -1863,18 +1904,18 @@ input:focus-visible,
 	left: 50%;
 	transform: translateX(-50%);
 	z-index: 100;
-	
+
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
 	padding: 12px;
 	min-width: 180px;
-	
+
 	background: var(--vscode-editorWidget-background, #252526);
 	border: 1px solid rgba(255, 193, 7, 0.5);
 	border-radius: 8px;
 	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-	
+
 	animation: popupFadeIn 0.15s ease-out;
 }
 
@@ -1928,7 +1969,11 @@ input:focus-visible,
 	padding: 6px 12px;
 	font-size: 12px;
 	font-weight: 500;
-	background: linear-gradient(135deg, rgba(255, 193, 7, 0.25), rgba(255, 152, 0, 0.2));
+	background: linear-gradient(
+		135deg,
+		rgba(255, 193, 7, 0.25),
+		rgba(255, 152, 0, 0.2)
+	);
 	border: 1px solid rgba(255, 193, 7, 0.5);
 	border-radius: 4px;
 	color: var(--vscode-foreground);
@@ -1937,7 +1982,11 @@ input:focus-visible,
 }
 
 .safety-popup-confirm:hover:not(:disabled) {
-	background: linear-gradient(135deg, rgba(255, 193, 7, 0.4), rgba(255, 152, 0, 0.3));
+	background: linear-gradient(
+		135deg,
+		rgba(255, 193, 7, 0.4),
+		rgba(255, 152, 0, 0.3)
+	);
 }
 
 .safety-popup-confirm:disabled {

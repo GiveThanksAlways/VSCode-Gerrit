@@ -73,12 +73,16 @@ export const SafetyArmedButton: VFC<SafetyArmedButtonProps> = ({
 	useEffect(() => {
 		if (!isArmed) return;
 		const handleClickOutside = (e: MouseEvent) => {
-			if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+			if (
+				containerRef.current &&
+				!containerRef.current.contains(e.target as Node)
+			) {
 				setArmed(false);
 			}
 		};
 		document.addEventListener('mousedown', handleClickOutside);
-		return () => document.removeEventListener('mousedown', handleClickOutside);
+		return () =>
+			document.removeEventListener('mousedown', handleClickOutside);
 	}, [isArmed]);
 
 	const handleArmClick = () => {

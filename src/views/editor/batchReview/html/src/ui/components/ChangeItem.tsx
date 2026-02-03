@@ -1,4 +1,8 @@
-import { BatchReviewChange, BatchReviewFileInfo } from '../../../../types';
+import {
+	BatchReviewChange,
+	BatchReviewFileInfo,
+	SeverityLevel,
+} from '../../../../types';
 import { FolderItem, FileItem, buildSimpleFileTree } from './FileTree';
 import React, { VFC, useState, useEffect } from 'react';
 import { vscode } from '../../lib/api';
@@ -38,7 +42,7 @@ interface ExpandableChangeItemProps {
 	change: BatchReviewChange;
 	selected: boolean;
 	onSelectionEvent: (event: SelectionEvent) => void;
-	showScore?: boolean;
+	showSeverity?: boolean;
 	draggable?: boolean;
 	onDragStart?: (e: React.DragEvent, changeID: string) => void;
 	onDragOver?: (e: React.DragEvent, index: number) => void;
@@ -47,13 +51,15 @@ interface ExpandableChangeItemProps {
 	showDropIndicator?: 'before' | 'after' | null;
 	/** Chain info for highlighting */
 	chainInfo?: ChainInfo;
+	/** Which list this item is in - determines if chain highlighting is shown */
+	listType?: 'yourTurn' | 'batch';
 }
 
 export const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 	change,
 	selected,
 	onSelectionEvent,
-	showScore = false,
+	showSeverity = false,
 	draggable = false,
 	onDragStart,
 	onDragOver,
@@ -61,6 +67,7 @@ export const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 	index,
 	showDropIndicator = null,
 	chainInfo: externalChainInfo,
+	listType = 'batch',
 }) => {
 	const [expanded, setExpanded] = useState(false);
 	const [loadingFiles, setLoadingFiles] = useState(false);
@@ -258,13 +265,17 @@ export const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 	};
 
 	// Build class string for chain highlighting
-	const chainClasses = [
-		chainInfo.inChain ? 'in-chain' : '',
-		chainInfo.chainColorClass || '',
-		chainInfo.hasUnsubmittedDependencies ? 'chain-warning' : '',
-	]
-		.filter(Boolean)
-		.join(' ');
+	// Only apply chain colors if in batch view
+	const chainClasses =
+		listType === 'batch'
+			? [
+					chainInfo.inChain ? 'in-chain' : '',
+					chainInfo.chainColorClass || '',
+					chainInfo.hasUnsubmittedDependencies ? 'chain-warning' : '',
+				]
+					.filter(Boolean)
+					.join(' ')
+			: '';
 
 	return (
 		<div
@@ -315,12 +326,12 @@ export const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 						<span className="change-subject" title={change.subject}>
 							{change.subject}
 						</span>
-						{showScore && change.score !== undefined && (
+						{showSeverity && change.severity && (
 							<span
-								className={`change-score score-${Math.min(10, Math.max(1, Math.round(change.score)))}`}
-								title={`AI confidence score: ${change.score}/10`}
+								className={`change-severity severity-${change.severity.toLowerCase()}`}
+								title={`AI Review Severity: ${change.severity}`}
 							>
-								{change.score}
+								{change.severity}
 							</span>
 						)}
 						{/* Always show +2 checkmark if present */}

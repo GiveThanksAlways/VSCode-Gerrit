@@ -153,18 +153,20 @@ interface BatchReviewChange {
   owner: string;         // Owner display name
   updated: string;       // Last updated timestamp (ISO 8601)
   url: string;           // Gerrit Web UI URL for this change
-  score?: number;        // AI confidence score (1-10), only on batch items
+  severity?: SeverityLevel;  // AI review severity level, only on batch items
   files?: FileInfo[];    // File list (only if expanded)
   filesLoaded?: boolean; // True if files have been fetched
 }
+
+type SeverityLevel = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'APPROVED';
 ```
 
-**Score values (1-10):**
-- 1-2: Low confidence (red badge) - likely needs manual review
-- 3-4: Below average confidence (orange badge)
-- 5-6: Medium confidence (yellow badge)
-- 7-8: Above average confidence (light green badge)
-- 9-10: High confidence (green badge) - AI is confident in review
+**Severity values:**
+- `CRITICAL`: Critical issues found (red badge) - requires immediate attention
+- `HIGH`: Significant issues found (orange badge) - important to review
+- `MEDIUM`: Moderate concerns (yellow badge) - standard review needed
+- `LOW`: Minor issues (light green badge) - low priority review
+- `APPROVED`: No issues found (green badge) - AI recommends approval
 
 #### Example Usage
 
@@ -175,10 +177,10 @@ curl http://127.0.0.1:45193/health
 # Get current batch
 curl http://127.0.0.1:45193/batch
 
-# Add changes to batch with AI confidence scores
+# Add changes to batch with AI severity scores
 curl -X POST http://127.0.0.1:45193/batch \
   -H "Content-Type: application/json" \
-  -d '{"changeIDs": ["I1234567890abcdef", "I0987654321fedcba"], "scores": {"I1234567890abcdef": 9, "I0987654321fedcba": 6}}'
+  -d '{"changeIDs": ["I1234567890abcdef", "I0987654321fedcba"], "scores": {"I1234567890abcdef": "APPROVED", "I0987654321fedcba": "MEDIUM"}}'
 
 # Add changes without scores (manual review)
 curl -X POST http://127.0.0.1:45193/batch \
@@ -208,22 +210,22 @@ def get_your_turn_changes():
     return resp.json()["yourTurn"]
 
 def analyze_and_score_changes(changes):
-    """AI analyzes changes and assigns confidence scores."""
+    """AI analyzes changes and assigns severity levels."""
     scores = {}
-    high_confidence_ids = []
+    approved_ids = []
     
     for change in changes:
-        # Your AI logic here to determine confidence
-        score = my_ai_model.analyze(change)
+        # Your AI logic here to determine severity
+        severity = my_ai_model.analyze(change)
         
-        if score >= 7:  # High confidence
-            high_confidence_ids.append(change["changeID"])
-            scores[change["changeID"]] = score
+        if severity in ["APPROVED", "LOW"]:  # Low severity
+            approved_ids.append(change["changeID"])
+            scores[change["changeID"]] = severity
     
-    return high_confidence_ids, scores
+    return approved_ids, scores
 
 def add_to_batch(change_ids, scores):
-    """Add changes to batch with scores."""
+    """Add changes to batch with severity scores."""
     resp = requests.post(
         f"{API_BASE}/batch",
         json={"changeIDs": change_ids, "scores": scores}
@@ -237,8 +239,8 @@ result = add_to_batch(ids_to_batch, scores)
 print(f"Added {len(ids_to_batch)} changes to batch")
 
 # Now the human reviewer opens the Batch Review panel and:
-# 1. Sees changes sorted by AI confidence score
-# 2. Expands high-confidence changes to review files
+# 1. Sees changes sorted by AI severity (CRITICAL first)
+# 2. Expands changes to review files
 # 3. Makes final decision and submits review
 ```
 
