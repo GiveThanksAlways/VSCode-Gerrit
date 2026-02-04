@@ -62,6 +62,14 @@ class BatchReviewProvider implements Disposable {
 	private _apiServer: BatchReviewApiServer | null = null;
 	// Cache chain info to avoid repeated API calls
 	private _chainInfoCache: Map<string, ChainInfoResult> = new Map();
+	/**
+	 * Track change IDs that have been successfully submitted/merged.
+	 * These are filtered out from incoming changes to prevent reappearing
+	 * due to Gerrit API cache timing issues.
+	 * This is a state-machine approach: once submitted, changes stay "submitted"
+	 * until the extension is restarted.
+	 */
+	private _submittedChangeIDs: Set<string> = new Set();
 
 	private constructor(
 		private readonly _gerritRepo: Repository,
@@ -263,8 +271,11 @@ class BatchReviewProvider implements Disposable {
 		const batchChangeIDs = new Set(
 			this._state.batchChanges.map((c) => c.changeID)
 		);
+		// Filter out submitted changes (state-machine: once submitted, never reappear)
 		this._state.incomingChanges = changes.filter(
-			(change) => !batchChangeIDs.has(change.changeID)
+			(change) =>
+				!batchChangeIDs.has(change.changeID) &&
+				!this._submittedChangeIDs.has(change.changeID)
 		);
 
 		this._state.loading = false;
@@ -285,8 +296,11 @@ class BatchReviewProvider implements Disposable {
 		const batchChangeIDs = new Set(
 			this._state.batchChanges.map((c) => c.changeID)
 		);
+		// Filter out submitted changes (state-machine: once submitted, never reappear)
 		this._state.incomingChanges = changes.filter(
-			(change) => !batchChangeIDs.has(change.changeID)
+			(change) =>
+				!batchChangeIDs.has(change.changeID) &&
+				!this._submittedChangeIDs.has(change.changeID)
 		);
 
 		this._state.loading = false;
@@ -844,6 +858,7 @@ class BatchReviewProvider implements Disposable {
 		let submitSuccess = 0;
 		let submitFail = 0;
 		const submitErrors: string[] = [];
+		const successfullySubmittedIDs: string[] = [];
 		console.log(
 			'[BatchReview] Submitting all batch changes (ordered):',
 			orderedIDs
@@ -901,6 +916,8 @@ class BatchReviewProvider implements Disposable {
 				const result = await api.submitWithDetails(change!.changeID);
 				if (result && result.success) {
 					submitSuccess++;
+					// Track successfully submitted change (state-machine transition)
+					successfullySubmittedIDs.push(change!.changeID);
 					console.log(
 						`[BatchReview] Submitted change: ${change!.changeID}`
 					);
@@ -927,6 +944,12 @@ class BatchReviewProvider implements Disposable {
 				);
 			}
 		}
+
+		// Mark successfully submitted changes as "submitted" so they won't reappear
+		for (const changeID of successfullySubmittedIDs) {
+			this._submittedChangeIDs.add(changeID);
+		}
+
 		// Clear batch after submission (for UX, same as _handleSubmitBatch)
 		this._state.batchChanges = [];
 		await this._updateView();
@@ -1027,6 +1050,7 @@ class BatchReviewProvider implements Disposable {
 		let successCount = 0;
 		let failureCount = 0;
 		const errors: string[] = [];
+		const successfullySubmittedIDs: string[] = [];
 
 		// Map REST IDs to Gerrit Change-Ids (camelCase)
 		const batchChangeIDToChangeId = Object.fromEntries(
@@ -1053,10 +1077,17 @@ class BatchReviewProvider implements Disposable {
 			const result = await api.submitWithDetails(change!.changeID);
 			if (result.success) {
 				successCount++;
+				// Track successfully submitted change (state-machine transition)
+				successfullySubmittedIDs.push(change!.changeID);
 			} else {
 				failureCount++;
 				errors.push(`Change ${change!.number}: ${result.error}`);
 			}
+		}
+
+		// Mark successfully submitted changes as "submitted" so they won't reappear
+		for (const changeID of successfullySubmittedIDs) {
+			this._submittedChangeIDs.add(changeID);
 		}
 
 		// Clear batch after submission (only successful ones are merged, but clear all for UX)
