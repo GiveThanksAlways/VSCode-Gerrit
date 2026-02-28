@@ -7,6 +7,9 @@ import { FolderItem, FileItem, buildSimpleFileTree } from './FileTree';
 import React, { VFC, useState, useEffect } from 'react';
 import { vscode } from '../../lib/api';
 
+/** Maximum characters to show in the inline AI summary preview. */
+const AI_SUMMARY_PREVIEW_MAX_LENGTH = 300;
+
 export interface ChainInfo {
 	inChain: boolean;
 	position?: number;
@@ -264,6 +267,21 @@ export const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 		}
 	};
 
+	/**
+	 * Open the AI summary for this change in a markdown preview.
+	 */
+	const handleViewAISummary = (e: React.SyntheticEvent) => {
+		e.stopPropagation();
+		vscode.postMessage({
+			type: 'viewAISummary',
+			body: {
+				changeID: change.changeID,
+				changeNumber: change.number,
+				subject: change.subject,
+			},
+		});
+	};
+
 	// Build class string for chain highlighting
 	// Only apply chain colors if in batch view
 	const chainClasses =
@@ -338,31 +356,13 @@ export const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 							<span
 								className="ai-summary-badge"
 								title="AI summary available — click to view"
-								onClick={(e) => {
-									e.stopPropagation();
-									vscode.postMessage({
-										type: 'viewAISummary',
-										body: {
-											changeID: change.changeID,
-											changeNumber: change.number,
-											subject: change.subject,
-										},
-									});
-								}}
+								onClick={handleViewAISummary}
 								role="button"
 								tabIndex={0}
 								onKeyDown={(e) => {
 									if (e.key === 'Enter' || e.key === ' ') {
 										e.preventDefault();
-										e.stopPropagation();
-										vscode.postMessage({
-											type: 'viewAISummary',
-											body: {
-												changeID: change.changeID,
-												changeNumber: change.number,
-												subject: change.subject,
-											},
-										});
+										handleViewAISummary(e);
 									}
 								}}
 							>
@@ -452,17 +452,7 @@ export const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 								<span>AI Summary</span>
 								<button
 									className="ai-summary-expand-button"
-									onClick={(e) => {
-										e.stopPropagation();
-										vscode.postMessage({
-											type: 'viewAISummary',
-											body: {
-												changeID: change.changeID,
-												changeNumber: change.number,
-												subject: change.subject,
-											},
-										});
-									}}
+									onClick={handleViewAISummary}
 									title="View full AI summary as markdown"
 								>
 									<span className="codicon codicon-open-preview"></span>
@@ -470,8 +460,8 @@ export const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 								</button>
 							</div>
 							<div className="ai-summary-content">
-								{change.aiSummary.length > 300
-									? change.aiSummary.substring(0, 300) + '…'
+								{change.aiSummary.length > AI_SUMMARY_PREVIEW_MAX_LENGTH
+									? change.aiSummary.substring(0, AI_SUMMARY_PREVIEW_MAX_LENGTH) + '…'
 									: change.aiSummary}
 							</div>
 						</div>

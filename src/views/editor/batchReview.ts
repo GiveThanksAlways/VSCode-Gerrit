@@ -1572,7 +1572,12 @@ class BatchReviewProvider implements Disposable {
 			content,
 			language: 'markdown',
 		});
-		await vscodeCommands.executeCommand('markdown.showPreview', doc.uri);
+		// Try to open as markdown preview; fall back to showing as a text editor
+		try {
+			await vscodeCommands.executeCommand('markdown.showPreview', doc.uri);
+		} catch {
+			await window.showTextDocument(doc, { preview: true });
+		}
 	}
 
 	private async _handleOpenChangeOnline(
