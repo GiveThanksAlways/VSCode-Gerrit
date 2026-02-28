@@ -9,6 +9,7 @@ import {
 	ReorderChangesMessage,
 	SetFileViewModeMessage,
 	SubmitBatchVoteMessage,
+	ViewAISummaryMessage,
 } from './batchReview/messaging';
 import {
 	commands as vscodeCommands,
@@ -18,6 +19,7 @@ import {
 	Uri,
 	ViewColumn,
 	window,
+	workspace,
 } from 'vscode';
 import {
 	BatchReviewChange,
@@ -29,6 +31,7 @@ import {
 	createBatchReviewApiServer,
 	BatchReviewApiServer,
 	ScoreMap,
+	SummaryMap,
 } from '../../lib/batchReviewApi/server';
 import {
 	getOrderedBatch,
@@ -309,7 +312,8 @@ class BatchReviewProvider implements Disposable {
 
 	private async _handleAddToBatch(
 		msg: AddToBatchMessage,
-		scores?: ScoreMap
+		scores?: ScoreMap,
+		summaries?: SummaryMap
 	): Promise<void> {
 		console.log('[BatchReview] _handleAddToBatch called with:', {
 			changeIDs: msg.body.changeIDs,
@@ -339,7 +343,7 @@ class BatchReviewProvider implements Disposable {
 			this._state.incomingChanges.map((c) => c.changeID)
 		);
 
-		// Prepare changes to insert (avoid duplicates, apply severities)
+		// Prepare changes to insert (avoid duplicates, apply severities and summaries)
 		const newChanges: BatchReviewChange[] = [];
 		for (const change of changesToAdd) {
 			if (
@@ -357,6 +361,10 @@ class BatchReviewProvider implements Disposable {
 				} else {
 					// If no severity provided, keep existing or leave undefined
 					change.severity = change.severity ?? undefined;
+				}
+				// Apply AI summary if provided from API
+				if (summaries && summaries[change.changeID] !== undefined) {
+					change.aiSummary = summaries[change.changeID];
 				}
 				newChanges.push(change);
 			} else {
@@ -1324,8 +1332,8 @@ class BatchReviewProvider implements Disposable {
 		if (!this._apiServer) {
 			this._apiServer = createBatchReviewApiServer({
 				getBatch: () => this.getBatchChanges(),
-				addToBatch: (changeIDs, scores) =>
-					this.addToBatch(changeIDs, scores),
+				addToBatch: (changeIDs, scores, summaries) =>
+					this.addToBatch(changeIDs, scores, summaries),
 				clearBatch: () => {
 					void this._handleClearBatch();
 				},
@@ -1518,12 +1526,58 @@ class BatchReviewProvider implements Disposable {
 			case 'reorderChanges':
 				await this._handleReorderChanges(msg);
 				break;
+			case 'viewAISummary':
+				await this._handleViewAISummary(msg);
+				break;
 		}
 	}
 
 	private _handleSetFileViewMode(msg: SetFileViewModeMessage): void {
 		this._state.fileViewMode = msg.body.mode;
 		void this._updateView();
+	}
+
+	private async _handleViewAISummary(
+		msg: ViewAISummaryMessage
+	): Promise<void> {
+		const change =
+			this._state.batchChanges.find(
+				(c) => c.changeID === msg.body.changeID
+			) ??
+			this._state.incomingChanges.find(
+				(c) => c.changeID === msg.body.changeID
+			);
+
+		if (!change?.aiSummary) {
+			void window.showInformationMessage(
+				`No AI summary available for #${msg.body.changeNumber}.`
+			);
+			return;
+		}
+
+		// Open the AI summary as a virtual markdown document
+		const header = `# AI Review Summary — #${change.number}: ${change.subject}\n\n`;
+		const meta = [
+			`**Project:** ${change.project}`,
+			`**Branch:** ${change.branch}`,
+			`**Owner:** ${change.owner.name}`,
+			change.severity ? `**Severity:** ${change.severity}` : '',
+		]
+			.filter(Boolean)
+			.join('  \n');
+		const content = `${header}${meta}\n\n---\n\n${change.aiSummary}`;
+
+		// Use an untitled markdown document for the summary
+		const doc = await workspace.openTextDocument({
+			content,
+			language: 'markdown',
+		});
+		// Try to open as markdown preview; fall back to showing as a text editor
+		try {
+			await vscodeCommands.executeCommand('markdown.showPreview', doc.uri);
+		} catch {
+			await window.showTextDocument(doc, { preview: true });
+		}
 	}
 
 	private async _handleOpenChangeOnline(
@@ -1659,13 +1713,14 @@ class BatchReviewProvider implements Disposable {
 	}
 
 	// Extensible API for AI agents/automation (read/modify batch, but NOT submit)
-	public addToBatch(changeIDs: string[], scores?: ScoreMap): void {
+	public addToBatch(changeIDs: string[], scores?: ScoreMap, summaries?: SummaryMap): void {
 		void this._handleAddToBatch(
 			{
 				type: 'addToBatch',
 				body: { changeIDs },
 			},
-			scores
+			scores,
+			summaries
 		);
 	}
 

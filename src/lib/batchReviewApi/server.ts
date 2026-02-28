@@ -46,9 +46,17 @@ export interface ScoreMap {
 	[changeID: string]: SeverityLevel;
 }
 
+/**
+ * Summary mapping for changes being added to batch.
+ * Maps changeID to an AI-generated markdown summary string.
+ */
+export interface SummaryMap {
+	[changeID: string]: string;
+}
+
 export interface BatchReviewApiCallbacks {
 	getBatch: () => BatchReviewChange[];
-	addToBatch: (changeIDs: string[], scores?: ScoreMap) => void;
+	addToBatch: (changeIDs: string[], scores?: ScoreMap, summaries?: SummaryMap) => void;
 	clearBatch: () => void;
 }
 
@@ -137,6 +145,7 @@ export function createBatchReviewApiServer(
 					const data = JSON.parse(body) as {
 						changeIDs?: unknown[];
 						scores?: Record<string, unknown>;
+						summaries?: Record<string, unknown>;
 					};
 					if (!data.changeIDs || !Array.isArray(data.changeIDs)) {
 						console.error(
@@ -220,7 +229,28 @@ export function createBatchReviewApiServer(
 						);
 					}
 
-					callbacks.addToBatch(data.changeIDs, scores);
+					// Parse and validate summaries if provided
+					let summaries: SummaryMap | undefined;
+					if (data.summaries && typeof data.summaries === 'object') {
+						summaries = {};
+						for (const [changeID, summary] of Object.entries(
+							data.summaries
+						)) {
+							if (typeof summary === 'string' && summary.length > 0) {
+								summaries[changeID] = summary;
+							} else {
+								console.warn(
+									`[BatchReviewAPI] Ignoring invalid summary for ${changeID}: must be a non-empty string`
+								);
+							}
+						}
+						console.log(
+							'[BatchReviewAPI] Received summaries for:',
+							Object.keys(summaries)
+						);
+					}
+
+					callbacks.addToBatch(data.changeIDs, scores, summaries);
 					const batch = callbacks.getBatch();
 					res.writeHead(200);
 					res.end(

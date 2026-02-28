@@ -309,3 +309,102 @@
 .changes-container::-webkit-scrollbar-thumb:hover {
 	background: var(--vscode-scrollbarSlider-hoverBackground);
 }
+
+/* ============================================
+   AI Summary Styles
+   ============================================ */
+
+.ai-summary-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	padding: 1px 6px;
+	border-radius: 4px;
+	font-size: 11px;
+	cursor: pointer;
+	background: color-mix(
+		in srgb,
+		var(--vscode-editorInfo-foreground, #3794ff) 15%,
+		transparent
+	);
+	color: var(--vscode-editorInfo-foreground, #3794ff);
+	border: 1px solid
+		color-mix(
+			in srgb,
+			var(--vscode-editorInfo-foreground, #3794ff) 30%,
+			transparent
+		);
+	transition: background 0.15s ease;
+}
+
+.ai-summary-badge:hover {
+	background: color-mix(
+		in srgb,
+		var(--vscode-editorInfo-foreground, #3794ff) 25%,
+		transparent
+	);
+}
+
+.ai-summary-preview {
+	margin: 4px 8px 8px 8px;
+	padding: 8px 12px;
+	border-radius: 6px;
+	background: color-mix(
+		in srgb,
+		var(--vscode-editorInfo-foreground, #3794ff) 8%,
+		var(--vscode-editor-background)
+	);
+	border: 1px solid
+		color-mix(
+			in srgb,
+			var(--vscode-editorInfo-foreground, #3794ff) 20%,
+			transparent
+		);
+}
+
+.ai-summary-header {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--vscode-editorInfo-foreground, #3794ff);
+	margin-bottom: 6px;
+}
+
+.ai-summary-expand-button {
+	margin-left: auto;
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 2px 8px;
+	font-size: 11px;
+	cursor: pointer;
+	color: var(--vscode-editorInfo-foreground, #3794ff);
+	background: transparent;
+	border: 1px solid
+		color-mix(
+			in srgb,
+			var(--vscode-editorInfo-foreground, #3794ff) 30%,
+			transparent
+		);
+	border-radius: 4px;
+	transition: background 0.15s ease;
+}
+
+.ai-summary-expand-button:hover {
+	background: color-mix(
+		in srgb,
+		var(--vscode-editorInfo-foreground, #3794ff) 15%,
+		transparent
+	);
+}
+
+.ai-summary-content {
+	font-size: 12px;
+	line-height: 1.5;
+	color: var(--vscode-editor-foreground);
+	white-space: pre-wrap;
+	word-break: break-word;
+	opacity: 0.9;
+}
