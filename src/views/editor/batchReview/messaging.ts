@@ -131,6 +131,15 @@ export interface ReorderChangesMessage {
 	};
 }
 
+export interface ViewAISummaryMessage {
+	type: 'viewAISummary';
+	body: {
+		changeID: string;
+		changeNumber: number;
+		subject: string;
+	};
+}
+
 /**
  * Batch Review `postMessage` message types and their bodies.
  */
@@ -165,6 +174,7 @@ export type BatchReviewWebviewMessage =
 	| SetFileViewModeMessage
 	| OpenChangeOnlineMessage
 	| ReorderChangesMessage
+	| ViewAISummaryMessage
 	| GetChainInfoMessage
 	| ChainInfoMessage
 	| {

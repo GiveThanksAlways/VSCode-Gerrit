@@ -67,4 +67,10 @@ export interface BatchReviewChange {
 	 * Gerrit web URL for this change (if available)
 	 */
 	gerritUrl?: string;
+	/**
+	 * Optional AI-generated summary in markdown format.
+	 * Contains the AI's analysis, flagged issues, and reasoning
+	 * for the assigned severity level.
+	 */
+	aiSummary?: string;
 }

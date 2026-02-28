@@ -334,6 +334,41 @@ export const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 								{change.severity}
 							</span>
 						)}
+						{change.aiSummary && (
+							<span
+								className="ai-summary-badge"
+								title="AI summary available — click to view"
+								onClick={(e) => {
+									e.stopPropagation();
+									vscode.postMessage({
+										type: 'viewAISummary',
+										body: {
+											changeID: change.changeID,
+											changeNumber: change.number,
+											subject: change.subject,
+										},
+									});
+								}}
+								role="button"
+								tabIndex={0}
+								onKeyDown={(e) => {
+									if (e.key === 'Enter' || e.key === ' ') {
+										e.preventDefault();
+										e.stopPropagation();
+										vscode.postMessage({
+											type: 'viewAISummary',
+											body: {
+												changeID: change.changeID,
+												changeNumber: change.number,
+												subject: change.subject,
+											},
+										});
+									}
+								}}
+							>
+								<span className="codicon codicon-notebook"></span>
+							</span>
+						)}
 						{/* Show green checkmark if submittable (ready to submit) */}
 						{change.submittable && (
 							<span
@@ -410,6 +445,37 @@ export const ExpandableChangeItem: VFC<ExpandableChangeItemProps> = ({
 			</div>
 			{expanded && (
 				<div className="files-container">
+					{change.aiSummary && (
+						<div className="ai-summary-preview">
+							<div className="ai-summary-header">
+								<span className="codicon codicon-notebook"></span>
+								<span>AI Summary</span>
+								<button
+									className="ai-summary-expand-button"
+									onClick={(e) => {
+										e.stopPropagation();
+										vscode.postMessage({
+											type: 'viewAISummary',
+											body: {
+												changeID: change.changeID,
+												changeNumber: change.number,
+												subject: change.subject,
+											},
+										});
+									}}
+									title="View full AI summary as markdown"
+								>
+									<span className="codicon codicon-open-preview"></span>
+									View Full Report
+								</button>
+							</div>
+							<div className="ai-summary-content">
+								{change.aiSummary.length > 300
+									? change.aiSummary.substring(0, 300) + '…'
+									: change.aiSummary}
+							</div>
+						</div>
+					)}
 					{loadingFiles ? (
 						<div className="files-loading">
 							<span className="codicon codicon-loading codicon-modifier-spin"></span>
